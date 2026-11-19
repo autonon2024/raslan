@@ -6201,10 +6201,23 @@ window.addEventListener('load', function () {
    const from=document.getElementById('salesDailyFrom').value,to=document.getElementById('salesDailyTo').value;
    const q=(document.getElementById('salesDailySearch').value||'').trim().toLowerCase();
    const parseDate=d=>{
-     const raw=d.dateStr||d.date||d.createdAt||d.timestamp||'';
-     const x=new Date(raw);
-     if(!Number.isNaN(x.getTime()))return salesDailyLocalDate(x);
-     const f=String(d.dateFormatted||'');const m=f.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+     const raw=d.dateStr??d.date??d.createdAt??d.timestamp??'';
+     if(raw&&typeof raw==='object'){
+       try{if(typeof raw.toDate==='function')return salesDailyLocalDate(raw.toDate());}catch(e){}
+       if(Number.isFinite(Number(raw.seconds)))return salesDailyLocalDate(new Date(Number(raw.seconds)*1000));
+       if(Number.isFinite(Number(raw._seconds)))return salesDailyLocalDate(new Date(Number(raw._seconds)*1000));
+     }
+     if(typeof raw==='string'){
+       const str=raw.trim();
+       const dm=str.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+       if(dm)return `${dm[3]}-${dm[2].padStart(2,'0')}-${dm[1].padStart(2,'0')}`;
+       const x=new Date(str);
+       if(!Number.isNaN(x.getTime()))return salesDailyLocalDate(x);
+     }else{
+       const x=new Date(raw);
+       if(!Number.isNaN(x.getTime()))return salesDailyLocalDate(x);
+     }
+     const f=String(d.dateFormatted||'').trim();const m=f.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
      return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:'';
    };
    const describe=v=>{
@@ -6338,7 +6351,8 @@ window.addEventListener('load', function () {
      const desc=[d.carInfo||d.carPlate||'',d.repairDetails||'',d.notes||''].filter(Boolean).join(' — ')||'فاتورة بيع';
      const base={date:day,ref,name,description:desc};
      push('count',{...base,amount:1});push('sales',{...base,amount:sale,description:'إجمالي الفاتورة بعد الخصم'});push('discount',{...base,amount:discount,description:'خصم الفاتورة'});push('advance',{...base,amount:adv});
-     push('goods',{...base,amount:grossSale-g});push('remaining',{...base,amount:r});push('paid',{...base,amount:p+adv});
+     // المقدم لا يدخل في مال البضاعة؛ المقدم يُحسب في بند مستقل فقط.
+     push('goods',{...base,amount:Math.max(0,sale-g),description:'مال البضاعة بدون المقدم'});push('remaining',{...base,amount:r});push('paid',{...base,amount:p+adv});
      push('transfers',{...base,amount:transfer});push('cash',{...base,amount:Math.max(0,p-transfer)});
      push('partsProfit',{...base,amount:pp});push('labor',{...base,amount:lp});push('services',{...base,amount:sp});push('gross',{...base,amount:g,description:'إجمالي الربح بعد خصم العميل'});
    });
