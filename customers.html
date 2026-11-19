@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مركز أوتو نون (NON) - سجل وحسابات العملاء الشامل</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --primary-orange: #ea580c;
+      --text-main: #0f172a;
+      --border-color: #cbd5e1;
+      --input-bg: #ffffff;
+      --btn-green: #10b981;
+      --danger-red: #dc2626;
+      --win-bg: #e2e8f0;
+      --win-blue-header: #1e3a8a;
+    }
+
+    body.dark-mode {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --border-color: #334155;
+      --input-bg: #334155;
+      --win-bg: #0f172a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: all 0.2s ease; }
+    
+    html, body {
+      direction: rtl !important;
+      text-align: right !important;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 10px;
+      font-size: 0.9rem;
+    }
+
+    .header-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      background: var(--card-bg);
+      padding: 12px 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .brand-logo { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: bold; color: var(--primary-orange); }
+    .brand-logo img { width: 38px; height: 38px; object-fit: contain; border-radius: 50%; }
+
+    .center-nav { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+    .btn-nav { background: var(--primary-orange); color: white; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 0.78rem; border: none; cursor: pointer; display: flex; align-items: center; gap: 5px; text-decoration: none; }
+    .btn-nav:hover { filter: brightness(1.1); }
+
+    .desktop-app-container {
+      background: var(--win-bg);
+      border: 2px solid var(--win-blue-header);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      margin-bottom: 15px;
+    }
+
+    .app-top-titlebar {
+      background: var(--win-blue-header);
+      color: white;
+      padding: 8px 12px;
+      font-weight: bold;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; border-right: 4px solid var(--primary-orange); }
+    .stat-title { font-size: 0.75rem; opacity: 0.8; font-weight: bold; margin-bottom: 4px; }
+    .stat-value { font-size: 1.1rem; font-weight: bold; }
+
+    .search-box-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .search-box-container input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      background: var(--input-bg);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.85rem; direction: rtl; text-align: right; }
+    th { background: #1e3a8a; color: white; padding: 8px; text-align: right; font-weight: bold; }
+    td { padding: 8px; border-bottom: 1px solid var(--border-color); text-align: right; background: var(--card-bg); }
+
+    .btn-win {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .btn-win-green { background: var(--btn-green); }
+  </style>
+
+  <!-- Firebase SDKs (Compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- شريط التنقل العلوي -->
+  <div class="header-top-bar">
+    <div class="brand-logo">
+      <img src="NON.jpg" alt="NON" onerror="this.style.display='none'">
+      <span>مركز أوتو نون (NON) - إدارة العملاء والسيارات</span>
+    </div>
+    <div class="center-nav">
+      <button class="btn-nav" onclick="location.href='index.html'"><i class="fa-solid fa-house"></i> الرئيسية والاستقبال</button>
+      <button class="btn-nav" style="background:#0284c7;" onclick="location.href='mowared.html'"><i class="fa-solid fa-truck-field"></i> الموردين والحسابات</button>
+    </div>
+    <div>
+      <button style="background:var(--card-bg); border:1px solid var(--border-color); color:var(--text-main); padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.78rem;" onclick="document.body.classList.toggle('dark-mode')">
+        <i class="fa-solid fa-moon"></i> المظهر
+      </button>
+    </div>
+  </div>
+
+  <!-- مؤشرات سريعة -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-title">إجمالي العملاء المسجلين</div>
+      <div class="stat-value" id="statTotalCustomers">0 عميل</div>
+    </div>
+    <div class="stat-card" style="border-right-color: var(--btn-green);">
+      <div class="stat-title">إجمالي عدد السيارات المسجلة</div>
+      <div class="stat-value" id="statTotalCars">0 سيارة</div>
+    </div>
+  </div>
+
+  <!-- حاوية جدول العملاء الرئيسية -->
+  <div class="desktop-app-container">
+    <div class="app-top-titlebar">
+      <span><i class="fa-solid fa-users-gear"></i> قاعدة بيانات عملاء مركز أوتو نون (مربوطة بقاعدة بيانات الاستقبال وحسابات العملاء)</span>
+      <button class="btn-win btn-win-green" onclick="exportTableToExcel('#customersTable', 'NON_Customers.xlsx')"><i class="fa-solid fa-file-excel"></i> تصدير إكسل</button>
+    </div>
+
+    <div class="search-box-container">
+      <input type="text" id="searchCustomerInput" onkeyup="filterCustomers()" placeholder="🔍 ابحث باسم العميل، رقم الهاتف، الماركة، رقم اللوحة، أو السيريال نمبر...">
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table id="customersTable">
+        <thead>
+          <tr>
+            <th>اسم العميل</th>
+            <th>رقم الهاتف (واتساب)</th>
+            <th>السيارة واللوحة المعدنية</th>
+            <th>السيريال نمبر (الكود)</th>
+            <th>رقم الشاسيه</th>
+            <th>شكوى العميل / ملاحظات</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="customersTableBody">
+          <tr><td colspan="7" style="text-align:center;">جاري جلب بيانات الاستقبال والسيارات من السحابة...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  databaseURL: "https://autononraslan-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    let allCarsList = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchReceptionDataFromFirebase();
+    });
+
+    // جلب البيانات بشكل لحظي من مجموعة cars في الاستقبال وإرسالها تلقائياً لقسم الحسابات
+    function fetchReceptionDataFromFirebase() {
+      db.collection("cars").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+        allCarsList = [];
+        snapshot.forEach((doc) => {
+          const carData = doc.id ? { id: doc.id, ...doc.data() } : doc.data();
+          allCarsList.push(carData);
+          
+          // إرسال / مزامنة بيانات العميل تلقائياً إلى مجموعة الحسابات (Accounts Customers)
+          syncCustomerToAccounts(carData);
+        });
+        renderCustomersTable(allCarsList);
+      }, (error) => {
+        console.error("خطأ في جلب بيانات العملاء: ", error);
+        document.getElementById('customersTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">حدث خطأ أثناء الاتصال بقاعدة البيانات.</td></tr>';
+      });
+    }
+
+    // دالة لإرسال بيانات العميل والسيارة تلقائياً إلى قسم الحسابات في السحابة
+    function syncCustomerToAccounts(car) {
+      if (!car.phone && !car.name) return;
+      
+      // استخدام رقم الهاتف أو معرف فريد كـ ID لمنع التكرار في الحسابات
+      const accountDocId = car.phone ? car.phone.replace(/[^0-9]/g, '') : (car.serialNo || car.id);
+      if (!accountDocId) return;
+
+      const accountPayload = {
+        name: car.name || 'غير محدد',
+        phone: car.phone || 'غير محدد',
+        carDetails: `${car.brand || ''} ${car.model || ''} (${car.color || ''})`,
+        plate: car.plate || '',
+        serialNo: car.serialNo || 'بدون',
+        chassis: car.chassis || '',
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // حفظ أو تحديث بيانات العميل في مجموعة الحسابات تلقائياً (accounts_customers)
+      db.collection("accounts_customers").doc(accountDocId).set(accountPayload, { merge: true })
+        .then(() => {
+          console.log(`تم مزامنة العميل ${car.name} مع قسم الحسابات بنجاح.`);
+        })
+        .catch((err) => {
+          console.error("خطأ أثناء مزامنة العميل مع الحسابات: ", err);
+        });
+    }
+
+    function renderCustomersTable(carsList) {
+      const tbody = document.getElementById('customersTableBody');
+      tbody.innerHTML = '';
+
+      if (carsList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد بيانات مسجلة في الاستقبال حتى الآن.</td></tr>';
+        document.getElementById('statTotalCustomers').innerText = "0 عميل";
+        document.getElementById('statTotalCars').innerText = "0 سيارة";
+        return;
+      }
+
+      // حساب عدد العملاء الفريدين (برقم الهاتف) وعدد السيارات الإجمالي
+      const uniquePhones = new Set(carsList.map(c => c.phone));
+      document.getElementById('statTotalCustomers').innerText = uniquePhones.size + " عميل";
+      document.getElementById('statTotalCars').innerText = carsList.length + " سيارة";
+
+      carsList.forEach((car) => {
+        const clientName = car.name || 'غير محدد';
+        const clientPhone = car.phone || 'غير محدد';
+        const carDetails = `${car.brand || ''} ${car.model || ''} (${car.color || ''})`;
+        const plateNo = car.plate ? `<br><small style="color:#2563eb; font-weight:bold;">اللوحة: ${car.plate}</small>` : '';
+        const serialNum = car.serialNo || 'بدون';
+        const chassisNum = car.chassis || 'غير مدخل';
+        const issueText = car.issue || car.receptionComplaint || 'صيانة عامة';
+
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-weight:bold;">${clientName}</td>
+            <td><a href="tel:${clientPhone}" style="color:var(--primary-orange); text-decoration:none;"><i class="fa-solid fa-phone"></i> ${clientPhone}</a></td>
+            <td>${carDetails} ${plateNo}</td>
+            <td><code style="background:var(--win-bg); padding:2px 6px; border-radius:4px; font-weight:bold; color:#d97706;">${serialNum}</code></td>
+            <td><small>${chassisNum}</small></td>
+            <td><small style="color:#b91c1c;">${issueText}</small></td>
+            <td>
+              <button class="btn-win" style="background:#0284c7; padding:4px 8px;" onclick="openWhatsApp('${clientPhone}', '${clientName}')" title="مراسلة عبر واتساب"><i class="fa-brands fa-whatsapp"></i> واتساب</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function filterCustomers() {
+      let query = document.getElementById('searchCustomerInput').value.toLowerCase();
+      let filtered = allCarsList.filter(car => 
+        (car.name && car.name.toLowerCase().includes(query)) || 
+        (car.phone && car.phone.toLowerCase().includes(query)) || 
+        (car.brand && car.brand.toLowerCase().includes(query)) || 
+        (car.model && car.model.toLowerCase().includes(query)) || 
+        (car.plate && car.plate.toLowerCase().includes(query)) || 
+        (car.serialNo && car.serialNo.toLowerCase().includes(query))
+      );
+      renderCustomersTable(filtered);
+    }
+
+    function openWhatsApp(phone, name) {
+      if(!phone || phone === 'غير محدد') { alert("رقم الهاتف غير متوفر لهذا العميل!"); return; }
+      let cleanPhone = phone.startsWith('0') ? '2' + phone : phone;
+      window.open(`https://wa.me/${cleanPhone}?text=مرحباً أ/ ${name}، من مركز أوتو نون (NON) لصيانة السيارات.`, '_blank');
+    }
+
+    function exportTableToExcel(tableQuery, filename) {
+      const wb = XLSX.utils.table_to_book(document.querySelector(tableQuery), {sheet: "العملاء والسيارات"});
+      XLSX.writeFile(wb, filename);
+    }
+  </script>
+</body>
+</html>

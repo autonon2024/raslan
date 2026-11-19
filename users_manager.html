@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071522">
+  <title>مركز أوتو نون - إدارة المستخدمين والملفات</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#06131f;
+      --bg2:#0a1b2b;
+      --card:rgba(12,29,45,.88);
+      --card2:#0d2234;
+      --line:rgba(120,170,205,.18);
+      --text:#f4f9ff;
+      --muted:#8ea5b8;
+      --cyan:#18c8ff;
+      --cyan2:#08aee8;
+      --purple:#9b5cff;
+      --green:#22c55e;
+      --red:#ef4444;
+      --yellow:#fbbf24;
+      --shadow:0 18px 50px rgba(0,0,0,.28);
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(24,200,255,.10), transparent 30%),
+        radial-gradient(circle at 90% 20%, rgba(155,92,255,.10), transparent 28%),
+        linear-gradient(135deg,var(--bg),#07111d 55%,#091a29);
+      color:var(--text);
+      font-family:"Cairo","Segoe UI",Tahoma,sans-serif;
+    }
+    body{padding:18px}
+    button,input,select{font:inherit}
+
+    .page{max-width:1500px;margin:auto}
+
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:18px;
+      padding:18px 22px;margin-bottom:16px;
+      background:linear-gradient(135deg,rgba(12,32,49,.96),rgba(8,22,36,.94));
+      border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);
+      position:relative;overflow:hidden;
+    }
+    .topbar:before{
+      content:"";position:absolute;inset:auto -80px -100px auto;width:260px;height:260px;
+      background:rgba(24,200,255,.08);filter:blur(4px);border-radius:50%;
+    }
+    .brand{display:flex;align-items:center;gap:15px;position:relative;z-index:1}
+    .brand-logo{
+      width:58px;height:58px;border-radius:17px;display:grid;place-items:center;
+      color:#fff;background:linear-gradient(135deg,var(--cyan),var(--purple));
+      box-shadow:0 8px 30px rgba(24,200,255,.20);font-size:25px;
+    }
+    .brand h1{margin:0;font-size:1.55rem;font-weight:800}
+    .brand p{margin:3px 0 0;color:var(--muted);font-size:.78rem}
+    .top-actions{display:flex;gap:9px;align-items:center;position:relative;z-index:1}
+    .btn{
+      border:1px solid transparent;border-radius:12px;padding:10px 15px;
+      cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      color:#fff;font-weight:700;transition:.2s;text-decoration:none;white-space:nowrap
+    }
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+    .btn-primary{background:linear-gradient(135deg,var(--cyan2),#087fd3);box-shadow:0 8px 25px rgba(24,200,255,.16)}
+    .btn-secondary{background:#122a3e;border-color:var(--line)}
+    .btn-danger{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.30);color:#ff9b9b}
+    .btn-success{background:rgba(34,197,94,.13);border-color:rgba(34,197,94,.25);color:#86efac}
+    .btn-sm{padding:7px 10px;border-radius:9px;font-size:.78rem}
+
+    .stats{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px
+    }
+    .stat{
+      background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px 17px;
+      box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between
+    }
+    .stat .icon{
+      width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+      background:rgba(24,200,255,.10);color:var(--cyan);font-size:18px
+    }
+    .stat:nth-child(2) .icon{background:rgba(155,92,255,.12);color:#bd8cff}
+    .stat:nth-child(3) .icon{background:rgba(34,197,94,.10);color:#6ee7a0}
+    .stat:nth-child(4) .icon{background:rgba(251,191,36,.10);color:#fcd34d}
+    .stat strong{display:block;font-size:1.35rem;line-height:1.2}
+    .stat span{color:var(--muted);font-size:.74rem}
+
+    .layout{display:grid;grid-template-columns:390px 1fr;gap:16px;align-items:start}
+    .card{
+      background:linear-gradient(145deg,rgba(13,34,52,.94),rgba(8,24,38,.94));
+      border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);
+      overflow:hidden
+    }
+    .card-head{
+      padding:16px 18px;border-bottom:1px solid var(--line);
+      display:flex;align-items:center;justify-content:space-between;gap:10px
+    }
+    .card-title{font-weight:800;display:flex;align-items:center;gap:9px}
+    .card-title i{color:var(--cyan)}
+    .card-body{padding:18px}
+
+    .form-grid{display:grid;gap:12px}
+    .form-group label{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:.76rem;font-weight:700;color:#c7d7e4}
+    .hint{font-size:.65rem;color:var(--muted);font-weight:400}
+    .control{
+      width:100%;border:1px solid var(--line);background:#081b2b;color:var(--text);
+      border-radius:11px;padding:11px 12px;outline:none;transition:.2s
+    }
+    .control::placeholder{color:#587187}
+    .control:focus{border-color:rgba(24,200,255,.65);box-shadow:0 0 0 3px rgba(24,200,255,.08)}
+    select.control{cursor:pointer}
+    option{background:#0b2031;color:#fff}
+    .password-wrap{position:relative}
+    .password-wrap .control{padding-left:43px}
+    .toggle-pass{
+      position:absolute;left:7px;top:50%;transform:translateY(-50%);
+      width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#7790a4;cursor:pointer
+    }
+    .password-tools{display:flex;gap:7px;margin-top:7px}
+    .password-tools button{flex:1}
+
+    .file-preview{
+      margin-top:8px;padding:10px 11px;border:1px dashed rgba(24,200,255,.28);
+      background:rgba(24,200,255,.05);border-radius:11px;color:#bfefff;font-size:.74rem
+    }
+    .file-preview b{color:#fff}
+
+    .submit-row{display:flex;gap:8px;margin-top:4px}
+    .submit-row .btn{flex:1}
+
+    .toolbar{
+      padding:13px 16px;border-bottom:1px solid var(--line);
+      display:flex;gap:9px;align-items:center;flex-wrap:wrap
+    }
+    .search{flex:1;min-width:220px;position:relative}
+    .search i{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#678197}
+    .search input{padding-right:38px}
+    .filter{width:180px}
+
+    .table-wrap{overflow:auto;max-height:600px}
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:820px}
+    th{
+      position:sticky;top:0;z-index:2;background:#0b2031;color:#8edfff;
+      font-size:.72rem;padding:12px;text-align:right;border-bottom:1px solid var(--line)
+    }
+    td{padding:11px 12px;border-bottom:1px solid rgba(120,170,205,.10);font-size:.78rem;vertical-align:middle}
+    tr:hover td{background:rgba(24,200,255,.025)}
+    .user-cell{display:flex;align-items:center;gap:10px}
+    .avatar{
+      width:36px;height:36px;border-radius:11px;display:grid;place-items:center;
+      background:linear-gradient(135deg,rgba(24,200,255,.18),rgba(155,92,255,.18));
+      border:1px solid var(--line);color:#bfefff;font-weight:800
+    }
+    .user-name{font-weight:800}.sub{display:block;color:#71899b;font-size:.65rem;margin-top:1px}
+    code{font-family:Consolas,monospace;color:#caa9ff;background:rgba(155,92,255,.08);padding:4px 7px;border-radius:7px}
+    .badge{
+      display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:20px;
+      font-size:.65rem;font-weight:800
+    }
+    .badge-cyan{background:rgba(24,200,255,.09);color:#80e4ff}
+    .badge-green{background:rgba(34,197,94,.10);color:#86efac}
+    .badge-red{background:rgba(239,68,68,.10);color:#fca5a5}
+    .badge-purple{background:rgba(155,92,255,.10);color:#c7a5ff}
+    .actions{display:flex;gap:5px;flex-wrap:wrap}
+    .empty,.loading{text-align:center;padding:45px 15px;color:var(--muted)}
+    .empty i,.loading i{font-size:30px;display:block;margin-bottom:10px;color:#426078}
+
+    .files-card{margin-top:16px}
+    .file-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:15px}
+    .file-card{
+      border:1px solid var(--line);background:rgba(5,19,31,.55);border-radius:13px;
+      padding:12px;cursor:pointer;transition:.2s;min-height:80px
+    }
+    .file-card:hover{border-color:rgba(24,200,255,.45);transform:translateY(-1px)}
+    .file-card .fi{font-size:18px;color:var(--cyan);margin-bottom:6px}
+    .file-card b{font-size:.76rem;display:block}
+    .file-card span{font-size:.62rem;color:#6e879a;display:block;direction:ltr;text-align:right;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .toast{
+      position:fixed;left:20px;bottom:20px;z-index:1000;min-width:280px;max-width:420px;
+      padding:13px 16px;border-radius:13px;background:#0b2031;border:1px solid var(--line);
+      box-shadow:0 15px 45px rgba(0,0,0,.35);display:none
+    }
+    .toast.show{display:flex;align-items:center;gap:9px;animation:slide .2s ease}
+    .toast.ok i{color:#5ee59a}.toast.err i{color:#ff7777}
+    @keyframes slide{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+
+    .modal-backdrop{
+      position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);
+      display:none;align-items:center;justify-content:center;padding:18px;z-index:900
+    }
+    .modal-backdrop.show{display:flex}
+    .modal{width:min(620px,100%);background:#0b2031;border:1px solid var(--line);border-radius:20px;box-shadow:0 30px 100px rgba(0,0,0,.55)}
+    .modal .card-body{max-height:75vh;overflow:auto}
+    .modal-actions{display:flex;gap:8px;margin-top:15px}
+    .modal-actions .btn{flex:1}
+
+    .connection{
+      font-size:.66rem;color:#7890a3;display:flex;align-items:center;gap:6px
+    }
+    .dot{width:7px;height:7px;border-radius:50%;background:#fbbf24;display:inline-block}
+    .dot.ok{background:#22c55e}.dot.err{background:#ef4444}
+
+    @media(max-width:1050px){
+      .layout{grid-template-columns:1fr}
+      .stats{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:650px){
+      body{padding:10px}.topbar{padding:15px;align-items:flex-start}
+      .top-actions{width:100%}.top-actions .btn{flex:1}
+      .brand h1{font-size:1.15rem}.brand p{font-size:.68rem}
+      .stats{grid-template-columns:1fr 1fr}.file-grid{grid-template-columns:1fr 1fr}
+      .card-body{padding:13px}
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo"><i class="fa-solid fa-user-shield"></i></div>
+      <div>
+        <h1>مركز أوتو نون</h1>
+        <p>إدارة المستخدمين • ربط المستخدم بكل قسم وملف • التحكم في الوصول</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="connection" id="connectionState"><span class="dot"></span> جاري الاتصال بقاعدة البيانات</span>
+      <a class="btn btn-secondary" href="login.html"><i class="fa-solid fa-arrow-right-from-bracket"></i> خروج</a>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><div><strong id="statUsers">0</strong><span>إجمالي المستخدمين</span></div><div class="icon"><i class="fa-solid fa-users"></i></div></div>
+    <div class="stat"><div><strong id="statFiles">18</strong><span>الملفات والأقسام</span></div><div class="icon"><i class="fa-solid fa-folder-tree"></i></div></div>
+    <div class="stat"><div><strong id="statActive">0</strong><span>حسابات مفعلة</span></div><div class="icon"><i class="fa-solid fa-circle-check"></i></div></div>
+    <div class="stat"><div><strong id="statCustom">0</strong><span>ملفات مخصصة</span></div><div class="icon"><i class="fa-solid fa-link"></i></div></div>
+  </section>
+
+  <main class="layout">
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title"><i class="fa-solid fa-user-plus"></i><span id="formTitle">إنشاء مستخدم جديد</span></div>
+        <span class="badge badge-cyan">حساب + ملف</span>
+      </div>
+
+      <div class="card-body">
+        <form id="userForm">
+          <input type="hidden" id="editingId">
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>اسم الموظف / الفني <span class="hint">الاسم الظاهر</span></label>
+              <input id="fullName" class="control" required maxlength="80" placeholder="مثال: أحمد محمد">
+            </div>
+
+            <div class="form-group">
+              <label>اسم المستخدم <span class="hint">Username</span></label>
+              <input id="username" class="control" required maxlength="40" autocomplete="off" placeholder="مثال: ahmed_mech">
+            </div>
+
+            <div class="form-group">
+              <label>كلمة المرور <span class="hint">Password</span></label>
+              <div class="password-wrap">
+                <input id="password" class="control" required maxlength="100" type="password" autocomplete="new-password" placeholder="أدخل كلمة المرور">
+                <button type="button" class="toggle-pass" onclick="togglePassword()" title="إظهار/إخفاء"><i class="fa-solid fa-eye"></i></button>
+              </div>
+              <div class="password-tools">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="generatePassword()"><i class="fa-solid fa-wand-magic-sparkles"></i> إنشاء كلمة قوية</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyPassword()"><i class="fa-regular fa-copy"></i> نسخ</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>القسم / الملف المسموح له <span class="hint">يمكن اختيار أي ملف ظاهر بالصورة</span></label>
+              <select id="targetPage" class="control" required onchange="updateFilePreview()">
+                <option value="">-- اختر الملف --</option>
+              </select>
+              <div id="filePreview" class="file-preview">اختر ملفًا لعرض اسمه ووظيفته.</div>
+            </div>
+
+            <div class="form-group">
+              <label>نوع الحساب <span class="hint">Role</span></label>
+              <select id="role" class="control" onchange="applyRoleDefaults()">
+                <option value="user">مستخدم / فني</option>
+                <option value="manager">مدير قسم</option>
+                <option value="admin">مدير النظام</option>
+                <option value="viewer">مشاهدة فقط</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>عدد ساعات الشيفت</label>
+              <input id="shiftHours" class="control" type="number" min="1" max="24" step="0.5" value="6">
+            </div>
+            <div class="form-group">
+              <label>الصفحات المسموح بها <span class="hint">اتركها فارغة للسماح بصفحة الحساب الأساسية فقط</span></label>
+              <select id="allowedPages" class="control" multiple size="5"></select>
+            </div>
+            <div class="form-group">
+              <label>صلاحيات الحساب</label>
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;background:#081b2b;border:1px solid var(--line);border-radius:11px;padding:10px">
+                <label><input type="checkbox" id="permView" checked> مشاهدة</label>
+                <label><input type="checkbox" id="permAdd" checked> إضافة</label>
+                <label><input type="checkbox" id="permEdit"> تعديل</label>
+                <label><input type="checkbox" id="permDelete"> حذف</label>
+                <label><input type="checkbox" id="permPrint" checked> طباعة</label>
+                <label><input type="checkbox" id="permManage"> إدارة القسم</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>حالة الحساب</label>
+              <select id="status" class="control">
+                <option value="active">مفعل</option>
+                <option value="disabled">موقوف</option>
+              </select>
+            </div>
+
+            <div class="submit-row">
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> <span id="submitText">حفظ المستخدم</span></button>
+              <button type="button" class="btn btn-secondary" id="cancelEdit" onclick="resetForm()" style="display:none"><i class="fa-solid fa-xmark"></i> إلغاء</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title"><i class="fa-solid fa-users-gear"></i> المستخدمون المسجلون</div>
+        <span class="badge badge-purple" id="resultCount">0 حساب</span>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="searchInput" class="control" placeholder="ابحث بالاسم أو اسم المستخدم أو الملف..." oninput="renderUsers()">
+        </div>
+        <select id="filterPage" class="control filter" onchange="renderUsers()">
+          <option value="">كل الملفات</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadUsers()" title="تحديث"><i class="fa-solid fa-rotate"></i></button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>المستخدم</th>
+              <th>اسم الدخول</th>
+              <th>الملف / القسم</th>
+              <th>الصلاحية</th>
+              <th>الحالة</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr><td colspan="6" class="loading"><i class="fa-solid fa-spinner fa-spin"></i>جاري تحميل الحسابات...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <section class="card files-card">
+    <div class="card-head">
+      <div class="card-title"><i class="fa-solid fa-folder-open"></i> ملفات وأقسام مركز أوتو نون</div>
+      <span class="badge badge-cyan">اضغط على أي ملف لتعيينه للمستخدم</span>
+    </div>
+    <div class="file-grid" id="fileGrid"></div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <div class="card-head">
+      <div class="card-title"><i class="fa-solid fa-triangle-exclamation"></i> تأكيد الحذف</div>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal()">×</button>
+    </div>
+    <div class="card-body">
+      <p id="confirmText" style="color:#c5d5e2;line-height:1.9"></p>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="confirmDeleteBtn"><i class="fa-solid fa-trash"></i> حذف نهائي</button>
+        <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* إعداد Firebase الحالي الخاص بالمشروع */
+  const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  /* الملفات الظاهرة في مجلد المشروع بالصورة */
+  const APP_FILES = [
+    {file:"admin.html", label:"إدارة النظام", icon:"fa-user-shield", color:"purple"},
+    {file:"archive.html", label:"الأرشيف", icon:"fa-box-archive"},
+    {file:"brakes_suspension.html", label:"العفشة والفرامل", icon:"fa-gears"},
+    {file:"check.html", label:"الفحص / المتابعة", icon:"fa-clipboard-check"},
+    {file:"customers.html", label:"العملاء", icon:"fa-users"},
+    {file:"diagnosis.html", label:"التشخيص", icon:"fa-stethoscope"},
+    {file:"display.html", label:"شاشة العرض", icon:"fa-tv"},
+    {file:"electricity.html", label:"الكهرباء والبرمجة", icon:"fa-bolt"},
+    {file:"hesabat.html", label:"الحسابات", icon:"fa-calculator"},
+    {file:"estkbal.html", label:"الرئيسية المحدثة", icon:"fa-house"},
+    {file:"job_order.html", label:"جيب الأوردر / أمر الشغل", icon:"fa-file-invoice"},
+    {file:"lift_control.html", label:"التحكم في الرافعات", icon:"fa-car"},
+    {file:"mechanics.html", label:"الميكانيكا والمحرك", icon:"fa-screwdriver-wrench"},
+    {file:"painting.html", label:"السمكرة والدهان", icon:"fa-paintbrush"},
+    {file:"tires.html", label:"الإطارات والزوايا", icon:"fa-circle-dot"},
+    {file:"treasury.html", label:"الخزينة / المخزن", icon:"fa-boxes-stacked"},
+    {file:"upholstery.html", label:"السروجي والتنجيد", icon:"fa-couch"},
+    {file:"wash.html", label:"المغسلة", icon:"fa-soap"},
+    {file:"login.html", label:"تسجيل الدخول", icon:"fa-right-to-bracket", color:"yellow"}
+  ];
+
+  let users = [];
+  let unsubscribe = null;
+
+  const $ = id => document.getElementById(id);
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[ch]));
+  }
+
+  function initials(name) {
+    const s = String(name || "مستخدم").trim().split(/\s+/).filter(Boolean);
+    return esc((s[0]?.[0] || "م") + (s[1]?.[0] || ""));
+  }
+
+  function roleLabel(role) {
+    return ({admin:"مدير النظام",manager:"مدير قسم",viewer:"مشاهدة فقط",user:"مستخدم / فني"})[role] || "مستخدم / فني";
+  }
+
+  function fileInfo(file) {
+    return APP_FILES.find(x => x.file === file) || {file:file || "", label:"ملف مخصص", icon:"fa-file"};
+  }
+
+  function showToast(message, type="ok") {
+    const t = $("toast");
+    t.className = "toast show " + (type === "err" ? "err" : "ok");
+    t.querySelector("i").className = type === "err" ? "fa-solid fa-circle-xmark" : "fa-solid fa-circle-check";
+    t.querySelector("span").textContent = message;
+    clearTimeout(window.toastTimer);
+    window.toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
+  }
+
+  function setConnection(ok, text) {
+    const el = $("connectionState");
+    el.innerHTML = `<span class="dot ${ok ? "ok" : "err"}"></span> ${esc(text)}`;
+  }
+
+  function populateFiles() {
+    const select = $("targetPage");
+    const filter = $("filterPage");
+    const grid = $("fileGrid");
+
+    APP_FILES.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item.file;
+      opt.textContent = item.label + " — " + item.file;
+      select.appendChild(opt);
+
+      const fopt = document.createElement("option");
+      fopt.value = item.file;
+      fopt.textContent = item.label;
+      filter.appendChild(fopt);
+      const aopt = document.createElement("option");
+      aopt.value = item.file;
+      aopt.textContent = item.label + " — " + item.file;
+      $("allowedPages").appendChild(aopt);
+
+      const card = document.createElement("div");
+      card.className = "file-card";
+      card.onclick = () => {
+        $("targetPage").value = item.file;
+        updateFilePreview();
+        $("fullName").focus();
+        window.scrollTo({top:0,behavior:"smooth"});
+      };
+      card.innerHTML = `
+        <div class="fi"><i class="fa-solid ${item.icon}"></i></div>
+        <b>${esc(item.label)}</b>
+        <span>${esc(item.file)}</span>
+      `;
+      grid.appendChild(card);
+    });
+
+    $("statFiles").textContent = APP_FILES.length;
+  }
+
+  function updateFilePreview() {
+    const info = fileInfo($("targetPage").value);
+    if (!$("targetPage").value) {
+      $("filePreview").innerHTML = "اختر ملفًا لعرض اسمه ووظيفته.";
+      return;
+    }
+    $("filePreview").innerHTML = `<b><i class="fa-solid ${info.icon}"></i> ${esc(info.label)}</b> — سيتم توجيه هذا المستخدم إلى <b>${esc(info.file)}</b>`;
+  }
+
+  function applyRoleDefaults(){
+    const role=$("role").value;
+    const presets={admin:{view:true,add:true,edit:true,delete:true,print:true,manage:true},manager:{view:true,add:true,edit:true,delete:false,print:true,manage:true},viewer:{view:true,add:false,edit:false,delete:false,print:false,manage:false},user:{view:true,add:true,edit:false,delete:false,print:true,manage:false}};
+    const p=presets[role]||presets.user;
+    Object.entries({permView:"view",permAdd:"add",permEdit:"edit",permDelete:"delete",permPrint:"print",permManage:"manage"}).forEach(([id,key])=>$(id).checked=p[key]);
+    const target=$("targetPage").value;
+    if(target){Array.from($("allowedPages").options).forEach(o=>o.selected=o.value===target);}
+  }
+
+  function togglePassword() {
+    const p = $("password");
+    const icon = document.querySelector(".toggle-pass i");
+    p.type = p.type === "password" ? "text" : "password";
+    icon.className = p.type === "password" ? "fa-solid fa-eye" : "fa-solid fa-eye-slash";
+  }
+
+  function generatePassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%";
+    let pass = "";
+    for (let i=0;i<12;i++) pass += chars[Math.floor(Math.random()*chars.length)];
+    $("password").value = pass;
+    $("password").type = "text";
+    document.querySelector(".toggle-pass i").className = "fa-solid fa-eye-slash";
+    showToast("تم إنشاء كلمة مرور قوية.");
+  }
+
+  async function copyPassword() {
+    const value = $("password").value;
+    if (!value) return showToast("اكتب كلمة المرور أولاً.", "err");
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast("تم نسخ كلمة المرور.");
+    } catch {
+      showToast("تعذر النسخ من المتصفح.", "err");
+    }
+  }
+
+  function resetForm() {
+    $("userForm").reset();
+    $("editingId").value = "";
+    $("password").type = "password";
+    document.querySelector(".toggle-pass i").className = "fa-solid fa-eye";
+    $("formTitle").textContent = "إنشاء مستخدم جديد";
+    $("submitText").textContent = "حفظ المستخدم";
+    $("cancelEdit").style.display = "none";
+    $("filePreview").innerHTML = "اختر ملفًا لعرض اسمه ووظيفته.";
+    $("shiftHours").value = 6;
+    $("allowedPages").selectedIndex = -1;
+    ["permView","permAdd","permEdit","permDelete","permPrint","permManage"].forEach((id,i)=>$(id).checked=[true,true,false,false,true,false][i]);
+  }
+
+  async function usernameExists(username, exceptId="") {
+    const snap = await db.collection("users").where("username","==",username).limit(5).get();
+    return snap.docs.some(d => d.id !== exceptId);
+  }
+
+  $("userForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = $("editingId").value;
+    const fullName = $("fullName").value.trim();
+    const username = $("username").value.trim().toLowerCase();
+    const password = $("password").value.trim();
+    const targetPage = $("targetPage").value;
+    const role = $("role").value;
+    const status = $("status").value;
+    const shiftHours = Math.min(24,Math.max(1,Number($("shiftHours").value)||6));
+    const allowedPages = Array.from($("allowedPages").selectedOptions).map(o=>o.value);
+    const permissions = {view:$("permView").checked,add:$("permAdd").checked,edit:$("permEdit").checked,delete:$("permDelete").checked,print:$("permPrint").checked,manage:$("permManage").checked};
+
+    if (!fullName || !username || !targetPage) {
+      showToast("أكمل البيانات المطلوبة أولاً.", "err");
+      return;
+    }
+    if (!id && !password) {
+      showToast("كلمة المرور مطلوبة عند إنشاء مستخدم.", "err");
+      return;
+    }
+
+    const btn = $("userForm").querySelector('button[type="submit"]');
+    const oldText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+
+    try {
+      if (await usernameExists(username, id)) {
+        throw new Error("اسم المستخدم موجود بالفعل. اختر اسمًا مختلفًا.");
+      }
+
+      const data = {
+        fullName,
+        username,
+        targetPage,
+        role,
+        status,
+        shiftHours,
+        workShiftHours:shiftHours,
+        allowedPages:allowedPages.length?allowedPages:[targetPage],
+        landingPage:targetPage,
+        permissions,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      /* نحافظ على حقل password القديم حتى يظل متوافقًا مع صفحة login الحالية. */
+      if (password) data.password = password;
+
+      if (id) {
+        await db.collection("users").doc(id).update(data);
+        showToast("تم تحديث بيانات المستخدم بنجاح.");
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        data.createdBy = "users_manager";
+        await db.collection("users").add(data);
+        showToast("تم إنشاء المستخدم وربطه بالملف بنجاح.");
+      }
+
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || "حدث خطأ أثناء الحفظ.", "err");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+  });
+
+  function renderUsers() {
+    const q = $("searchInput").value.trim().toLowerCase();
+    const page = $("filterPage").value;
+
+    const filtered = users.filter(u => {
+      const hay = [u.fullName,u.username,u.targetPage,fileInfo(u.targetPage).label].join(" ").toLowerCase();
+      return (!q || hay.includes(q)) && (!page || u.targetPage === page);
+    });
+
+    $("resultCount").textContent = `${filtered.length} حساب`;
+    $("statUsers").textContent = users.length;
+    $("statActive").textContent = users.filter(u => (u.status || "active") === "active").length;
+    $("statCustom").textContent = users.filter(u => !APP_FILES.some(f => f.file === u.targetPage)).length;
+
+    const tbody = $("usersTableBody");
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty"><i class="fa-solid fa-user-slash"></i>${users.length ? "لا توجد نتائج مطابقة للبحث." : "لا توجد حسابات بعد. أنشئ أول مستخدم من النموذج."}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(u => {
+      const info = fileInfo(u.targetPage);
+      const active = (u.status || "active") === "active";
+      return `
+        <tr>
+          <td>
+            <div class="user-cell">
+              <div class="avatar">${initials(u.fullName)}</div>
+              <div><div class="user-name">${esc(u.fullName)}</div><span class="sub">${esc(u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString("ar-EG") : "—")}</span></div>
+            </div>
+          </td>
+          <td><code>${esc(u.username)}</code></td>
+          <td><span class="badge badge-cyan"><i class="fa-solid ${info.icon}"></i>${esc(info.label)}</span><span class="sub" dir="ltr">${esc(u.targetPage)}</span></td>
+          <td><span class="badge ${u.role === "admin" ? "badge-purple" : "badge-cyan"}">${esc(roleLabel(u.role))}</span></td>
+          <td><span class="badge ${active ? "badge-green" : "badge-red"}"><i class="fa-solid ${active ? "fa-circle-check" : "fa-circle-pause"}"></i>${active ? "مفعل" : "موقوف"}</span></td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-secondary btn-sm" onclick="editUser('${esc(u.id)}')"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="askDelete('${esc(u.id)}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function editUser(id) {
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+
+    $("editingId").value = u.id;
+    $("fullName").value = u.fullName || "";
+    $("username").value = u.username || "";
+    $("password").value = u.password || "";
+    $("targetPage").value = u.targetPage || "";
+    $("role").value = u.role || "user";
+    $("status").value = u.status || "active";
+    $("shiftHours").value = Number(u.shiftHours||u.workShiftHours||6);
+    const allowed=new Set(Array.isArray(u.allowedPages)?u.allowedPages:[u.targetPage].filter(Boolean));
+    Array.from($("allowedPages").options).forEach(o=>o.selected=allowed.has(o.value));
+    const perms=u.permissions||{};
+    ["permView","permAdd","permEdit","permDelete","permPrint","permManage"].forEach((id,i)=>$(id).checked=perms[["view","add","edit","delete","print","manage"][i]]!==undefined?!!perms[["view","add","edit","delete","print","manage"][i]]:[true,true,false,false,true,false][i]);
+
+    $("formTitle").textContent = "تعديل المستخدم";
+    $("submitText").textContent = "حفظ التعديلات";
+    $("cancelEdit").style.display = "inline-flex";
+    updateFilePreview();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+
+  function askDelete(id) {
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+    $("confirmText").innerHTML = `سيتم حذف حساب <b style="color:#fff">${esc(u.fullName)}</b> باسم المستخدم <b style="color:#bfefff">${esc(u.username)}</b> نهائيًا من مجموعة users.`;
+    $("confirmModal").classList.add("show");
+    $("confirmDeleteBtn").onclick = () => deleteUser(id);
+  }
+
+  function closeModal() {
+    $("confirmModal").classList.remove("show");
+  }
+
+  async function deleteUser(id) {
+    closeModal();
+    try {
+      await db.collection("users").doc(id).delete();
+      showToast("تم حذف المستخدم.");
+      if ($("editingId").value === id) resetForm();
+    } catch (err) {
+      console.error(err);
+      showToast("تعذر حذف المستخدم: " + err.message, "err");
+    }
+  }
+
+  function loadUsers() {
+    if (unsubscribe) unsubscribe();
+
+    setConnection(false, "جاري الاتصال بقاعدة البيانات...");
+    $("usersTableBody").innerHTML = `<tr><td colspan="6" class="loading"><i class="fa-solid fa-spinner fa-spin"></i>جاري تحميل الحسابات...</td></tr>`;
+
+    unsubscribe = db.collection("users").onSnapshot(
+      snapshot => {
+        users = snapshot.docs.map(doc => ({id:doc.id, ...doc.data()}));
+        users.sort((a,b) => (a.fullName || "").localeCompare(b.fullName || "", "ar"));
+        setConnection(true, "متصل بقاعدة البيانات");
+        renderUsers();
+      },
+      error => {
+        console.error(error);
+        users = [];
+        setConnection(false, "خطأ في الاتصال / الصلاحيات");
+        $("usersTableBody").innerHTML = `<tr><td colspan="6" class="empty"><i class="fa-solid fa-triangle-exclamation"></i>تعذر قراءة مجموعة users.<br><small>${esc(error.message)}</small></td></tr>`;
+        showToast("تأكد من Firebase Firestore Rules.", "err");
+      }
+    );
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
+  populateFiles();
+  loadUsers();
+</script>
+</body>
+</html>

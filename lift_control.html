@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>مركز أوتو نون - وحدة تحكم الكوريك والحوامل</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#07111f;--card:#101e31;--border:rgba(148,163,184,.18);--text:#f8fafc;--muted:#9fb0c6;--accent:#22c7f2;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--gray:#94a3b8;--shadow:0 25px 70px rgba(0,0,0,.3)}
+*{box-sizing:border-box;font-family:"Segoe UI",Tahoma,Arial,sans-serif}body{margin:0;min-height:100vh;background:radial-gradient(circle at 10% 10%,rgba(34,199,242,.12),transparent 30%),linear-gradient(135deg,var(--bg),#0b1728);color:var(--text);padding:18px 18px 40px}button,input,select{font:inherit}.shell{max-width:1250px;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:rgba(16,30,49,.78);border:1px solid var(--border);border-radius:24px;padding:16px 20px;backdrop-filter:blur(16px);box-shadow:var(--shadow);margin-bottom:16px}.brand{display:flex;align-items:center;gap:12px}.brand img{width:54px;height:54px;object-fit:contain;background:#fff;border-radius:15px;padding:4px}.brand h1{font-size:1.3rem;margin:0}.brand small{display:block;color:var(--muted);margin-top:4px}.engineer{padding:9px 14px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);font-weight:900}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);padding:9px 13px;border-radius:12px;cursor:pointer;font-weight:900}.btn:hover{transform:translateY(-1px);border-color:var(--accent)}.primary{background:var(--accent);color:#06111d;border-color:transparent}.danger{background:#991b1b;color:#fff}.green{background:#15803d;color:#fff}.orange{background:#b45309;color:#fff}.gray{background:#475569;color:#fff}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.stat{padding:16px;border-radius:18px;background:rgba(16,30,49,.72);border:1px solid var(--border);box-shadow:var(--shadow)}.stat b{font-size:1.8rem;display:block;margin-top:5px}.stat small{color:var(--muted)}.stat.free b{color:var(--green)}.stat.busy b{color:var(--red)}.stat.offline b{color:var(--gray)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:15px}.lift{background:rgba(16,30,49,.82);border:1px solid var(--border);border-radius:22px;padding:17px;box-shadow:var(--shadow);position:relative;overflow:hidden}.lift::before{content:"";position:absolute;top:0;right:0;left:0;height:4px;background:var(--green)}.lift.busy::before{background:var(--red)}.lift.offline::before{background:var(--gray)}.lift-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.lift-name{font-size:1.2rem;font-weight:950}.status{padding:6px 10px;border-radius:999px;font-size:.75rem;font-weight:900}.status.free{background:rgba(34,197,94,.12);color:#4ade80}.status.busy{background:rgba(239,68,68,.12);color:#f87171}.status.offline{background:rgba(148,163,184,.12);color:#cbd5e1}.meta{color:var(--muted);line-height:1.9;margin:13px 0}.meta strong{color:var(--text)}.lift-actions{display:flex;gap:7px;flex-wrap:wrap}.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);z-index:20;align-items:center;justify-content:center;padding:15px}.modal-bg.open{display:flex}.modal{width:min(600px,100%);background:#0f1e32;border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:0 35px 100px rgba(0,0,0,.45)}.modal h2{margin-top:0}.form{display:grid;grid-template-columns:1fr 1fr;gap:11px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:.82rem;color:var(--muted)}.field input,.field select{padding:11px 12px;border:1px solid var(--border);border-radius:11px;background:#0b1728;color:#fff;outline:none}.field input:focus,.field select:focus{border-color:var(--accent)}.modal-actions{display:flex;gap:8px;margin-top:15px}.empty{padding:35px;text-align:center;color:var(--muted);background:rgba(255,255,255,.03);border:1px dashed var(--border);border-radius:20px}.note{margin:15px 0;padding:12px;border-radius:14px;background:rgba(34,199,242,.06);border:1px solid rgba(34,199,242,.15);color:var(--muted);line-height:1.7;font-size:.8rem}@media(max-width:700px){.stats{grid-template-columns:1fr}.form{grid-template-columns:1fr}.field.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <img src="non.png" onerror="this.style.display='none'">
+      <div>
+        <h1>وحدة تحكم الكوريك / الحوامل</h1>
+        <small>Lift / Bay Management — مركز أوتو نون</small>
+      </div>
+    </div>
+    <div class="engineer"><i class="fa-solid fa-user-tie"></i> المهندس: <span id="engineerName">المهندس المسؤول</span></div>
+    <div class="actions">
+      <button class="btn primary" onclick="openAdd()"><i class="fa-solid fa-plus"></i> إضافة كوريك</button>
+      <a class="btn" href="diagnosis(1).html" style="text-decoration:none"><i class="fa-solid fa-stethoscope"></i> التشخيص</a>
+    </div>
+  </header>
+  <div class="note"><b>نظام التشغيل:</b> الأخضر = متاح/عاطل، الأحمر = مشغول، الرمادي = غير متاح. عند تحويل سيارة من صفحة التشخيص يتم تحويل الكوريك تلقائياً إلى <b>مشغول</b>، وعند إنهاء العمل يعود تلقائياً إلى <b>متاح</b>.</div>
+  <section class="stats">
+    <div class="stat free"><small>الكوريك المتاح / العاطل</small><b id="freeCount">0</b></div>
+    <div class="stat busy"><small>الكوريك المشغول</small><b id="busyCount">0</b></div>
+    <div class="stat offline"><small>غير المتاح</small><b id="offlineCount">0</b></div>
+  </section>
+  <main id="grid" class="grid"><div class="empty">جاري تحميل الكواريك...</div></main>
+</div>
+
+<div id="modalBg" class="modal-bg">
+  <div class="modal">
+    <h2 id="modalTitle">إضافة كوريك</h2>
+    <div class="form">
+      <div class="field"><label>اسم الكوريك / الحامل</label><input id="liftName" placeholder="مثال: Lift 01"></div>
+      <div class="field"><label>نوعه</label><select id="liftType"><option>كوريك 2 عمود</option><option>كوريك 4 عمود</option><option>Bay / مكان صيانة</option><option>كوريك مقص</option></select></div>
+      <div class="field"><label>الفني المسؤول</label><input id="liftTech" placeholder="اسم الفني"></div>
+      <div class="field"><label>الحالة</label><select id="liftStatus"><option value="idle">متاح / عاطل</option><option value="offline">غير متاح</option><option value="busy">مشغول</option></select></div>
+      <div class="field full"><label>ملاحظات</label><input id="liftNotes" placeholder="مثال: مخصص للميكانيكا أو يحتاج صيانة"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="saveLift()"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+      <button class="btn" onclick="closeModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);const db=firebase.firestore();
+let lifts=[];let editingId=null;
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function statusInfo(l){const st=l.status||'idle';if(st==='busy')return ['busy','مشغول'];if(l.active===false||st==='offline')return ['offline','غير متاح'];return ['free','متاح / عاطل'];}
+
+function render(){
+  const grid=document.getElementById('grid');
+  let free=0,busy=0,off=0;
+  lifts.forEach(l=>{const [cls,label]=statusInfo(l);if(cls==='free')free++;else if(cls==='busy')busy++;else off++;});
+  document.getElementById('freeCount').textContent=free;
+  document.getElementById('busyCount').textContent=busy;
+  document.getElementById('offlineCount').textContent=off;
+  if(!lifts.length){grid.innerHTML='<div class="empty">لا توجد كواريك حتى الآن. اضغط «إضافة كوريك» للبدء.</div>';return;}
+  grid.innerHTML=lifts.map(l=>{
+    const [cls,label]=statusInfo(l);
+    const busyText=cls==='busy'?`<div>السيارة: <strong>${esc(l.carClientName||'غير محدد')}</strong></div><div>رقم السيارة: <strong>${esc(l.carId||'غير محدد')}</strong></div>`:'';
+    return `<article class="lift ${cls}"><div class="lift-head"><div class="lift-name"><i class="fa-solid fa-car-rear"></i> ${esc(l.name||l.id)}</div><span class="status ${cls}">${label}</span></div><div class="meta"><div>النوع: <strong>${esc(l.type||'كوريك / Bay')}</strong></div><div>الفني: <strong>${esc(l.technicianName||'غير محدد')}</strong></div>${busyText}<div>ملاحظات: <strong>${esc(l.notes||'—')}</strong></div></div><div class="lift-actions"><button class="btn primary" onclick="editLift('${esc(l.id)}')"><i class="fa-solid fa-pen"></i> تعديل</button>${cls==='busy'?`<button class="btn green" onclick="releaseLift('${esc(l.id)}')"><i class="fa-solid fa-unlock"></i> تحرير الكوريك</button>`:`<button class="btn orange" onclick="markBusy('${esc(l.id)}')"><i class="fa-solid fa-car"></i> جعله مشغول</button>`}${cls==='free'?`<button class="btn gray" onclick="setOffline('${esc(l.id)}')">تعطيل مؤقت</button>`:`<button class="btn green" onclick="setIdle('${esc(l.id)}')">تعيينه عاطل/متاح</button>`}<button class="btn danger" onclick="deleteLift('${esc(l.id)}')"><i class="fa-solid fa-trash"></i></button></div></article>`;
+  }).join('');
+}
+
+function openAdd(){editingId=null;document.getElementById('modalTitle').textContent='إضافة كوريك جديد';['liftName','liftTech','liftNotes'].forEach(id=>document.getElementById(id).value='');document.getElementById('liftStatus').value='idle';document.getElementById('modalBg').classList.add('open');}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');}
+function editLift(id){const l=lifts.find(x=>x.id===id);if(!l)return;editingId=id;document.getElementById('modalTitle').textContent='تعديل الكوريك';document.getElementById('liftName').value=l.name||'';document.getElementById('liftType').value=l.type||'كوريك 2 عمود';document.getElementById('liftTech').value=l.technicianName||'';document.getElementById('liftStatus').value=l.status||'idle';document.getElementById('liftNotes').value=l.notes||'';document.getElementById('modalBg').classList.add('open');}
+
+async function saveLift(){
+  const name=document.getElementById('liftName').value.trim();
+  if(!name){alert('أدخل اسم الكوريك.');return;}
+  const data={name,type:document.getElementById('liftType').value,technicianName:document.getElementById('liftTech').value.trim(),status:document.getElementById('liftStatus').value,active:document.getElementById('liftStatus').value!=='offline',notes:document.getElementById('liftNotes').value.trim(),lastUpdatedAt:new Date().toISOString()};
+  try{
+    if(editingId)await db.collection('lifts').doc(editingId).update(data);
+    else await db.collection('lifts').add({...data,createdAt:new Date().toISOString(),carId:null,carClientName:null});
+    closeModal();
+  }catch(e){console.error(e);alert('تعذر حفظ الكوريك: '+e.message);}
+}
+
+async function releaseLift(id){try{await db.collection('lifts').doc(id).update({status:'idle',active:true,carId:null,carClientName:null,busySince:null,lastUpdatedAt:new Date().toISOString()});}catch(e){alert('تعذر تحرير الكوريك.');}}
+async function setIdle(id){try{await db.collection('lifts').doc(id).update({status:'idle',active:true,lastUpdatedAt:new Date().toISOString()});}catch(e){alert('تعذر تحديث الحالة.');}}
+async function setOffline(id){try{await db.collection('lifts').doc(id).update({status:'offline',active:false,lastUpdatedAt:new Date().toISOString()});}catch(e){alert('تعذر تحديث الحالة.');}}
+async function markBusy(id){const client=prompt('اسم العميل/السيارة الموجودة على الكوريك:','');if(client===null)return;const carId=prompt('رقم السيارة أو Doc ID (اختياري):','')||'';try{await db.collection('lifts').doc(id).update({status:'busy',active:true,carClientName:client,carId,busySince:new Date().toISOString(),lastUpdatedAt:new Date().toISOString()});}catch(e){alert('تعذر جعل الكوريك مشغولاً.');}}
+async function deleteLift(id){const l=lifts.find(x=>x.id===id);if(l?.status==='busy'){alert('لا يمكن حذف كوريك مشغول. حرره أولاً.');return;}if(!confirm('حذف هذا الكوريك نهائياً؟'))return;try{await db.collection('lifts').doc(id).delete();}catch(e){alert('تعذر الحذف.');}}
+
+// جلب البيانات مباشرة بدون قيود تسجيل الدخول
+db.collection('lifts').onSnapshot(s=>{
+  lifts=[];
+  s.forEach(d=>lifts.push({id:d.id,...d.data()}));
+  render();
+},e=>{
+  console.error(e);
+  document.getElementById('grid').innerHTML='<div class="empty">تعذر الاتصال ببيانات الكواريك.</div>';
+});
+
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+</script>
+</body>
+</html>

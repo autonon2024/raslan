@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مركز أوتو نون - شاشة متابعة السيارات وحالات الصيانة والمغسلة والأقسام</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root{
+      --bg-color:#07111f;
+      --bg-secondary:#0b1728;
+      --text-color:#f8fafc;
+      --card-bg:#101e31;
+      --card-border:rgba(148,163,184,.18);
+      --accent:#22c7f2;
+      --accent-hover:#0ea5e9;
+      --header-bg:rgba(10,23,40,.86);
+      --badge-bg:#22c7f2;
+      --badge-text:#06111d;
+      --subtext:#9fb0c6;
+      --warning-orange:#f59e0b;
+      --danger-red:#ef4444;
+      --treasury-purple:#a855f7;
+      --wash-cyan:#14b8a6;
+      --testing-blue:#3b82f6;
+      --glass:rgba(15,31,51,.72);
+      --shadow:0 22px 55px rgba(0,0,0,.34);
+      --radius:24px;
+    }
+
+    [data-theme="light"]{
+      --bg-color:#edf4fb;
+      --bg-secondary:#e3edf7;
+      --text-color:#0b1728;
+      --card-bg:rgba(255,255,255,.9);
+      --card-border:rgba(15,23,42,.12);
+      --accent:#0284c7;
+      --accent-hover:#0369a1;
+      --header-bg:rgba(255,255,255,.84);
+      --badge-bg:#0284c7;
+      --badge-text:#fff;
+      --subtext:#52657b;
+      --glass:rgba(255,255,255,.78);
+      --shadow:0 22px 55px rgba(30,64,175,.12);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-weight:700}
+    html{scroll-behavior:smooth}
+    body{
+      min-height:100vh;
+      color:var(--text-color);
+      background:
+        radial-gradient(circle at 10% 10%, color-mix(in srgb,var(--accent) 13%,transparent), transparent 28%),
+        radial-gradient(circle at 90% 20%, rgba(168,85,247,.10), transparent 26%),
+        linear-gradient(135deg,var(--bg-color),var(--bg-secondary));
+      padding:20px 22px 78px;
+      overflow-x:hidden;
+      transition:background .45s ease,color .45s ease;
+    }
+
+    body::before{
+      content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+      background-size:34px 34px;
+      mask-image:linear-gradient(to bottom,rgba(0,0,0,.8),transparent 85%);
+    }
+
+    @keyframes floatIn{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
+    @keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(34,199,242,.12)}50%{box-shadow:0 0 0 10px rgba(34,199,242,0)}}
+    @keyframes shine{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+    @keyframes tickerMove{from{transform:translateX(0)}to{transform:translateX(50%)}}
+    @keyframes idleZoom{0%{transform:scale(1.03)}100%{transform:scale(1.12)}}
+    @keyframes idleFade{0%,100%{opacity:0}8%,42%{opacity:1}52%,92%{opacity:0}}
+    @keyframes dotPulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.45);opacity:1}}
+
+    .display-header{
+      position:relative;isolation:isolate;
+      min-height:142px;
+      display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;
+      padding:22px 26px;
+      margin-bottom:18px;
+      background:var(--header-bg);
+      border:1px solid var(--card-border);
+      border-radius:28px;
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(16px);
+      overflow:hidden;
+      animation:floatIn .55s ease both;
+    }
+    .display-header::after{
+      content:"";position:absolute;inset:0;z-index:-1;
+      background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.06) 48%,transparent 76%);
+      transform:translateX(-120%);animation:shine 8s linear infinite;
+    }
+    .brand{grid-column:2;display:flex;align-items:center;justify-content:center;gap:15px;text-align:center}
+    .brand img{
+      width:70px;height:70px;object-fit:contain;background:#fff;border-radius:18px;padding:5px;
+      border:2px solid var(--accent);box-shadow:0 8px 22px rgba(0,0,0,.22)
+    }
+    .brand-text h1{font-size:clamp(1.45rem,2.4vw,2.15rem);font-weight:950;letter-spacing:.5px}
+    .brand-text small{display:block;margin-top:5px;color:var(--subtext);font-size:.92rem}
+
+    .header-tools{grid-column:1;display:flex;align-items:center;gap:9px;justify-content:flex-start}
+    .header-right{grid-column:3;display:flex;justify-content:flex-end}
+    .tool-btn{
+      border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-color);
+      min-height:42px;padding:9px 13px;border-radius:14px;cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;font-weight:900;
+      transition:.25s;backdrop-filter:blur(10px)
+    }
+    .tool-btn:hover{transform:translateY(-2px);border-color:var(--accent);color:var(--accent)}
+    .tool-btn.primary{background:var(--accent);color:var(--badge-text);border-color:transparent;box-shadow:0 8px 22px rgba(34,199,242,.2)}
+    .datetime-box{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+    .clock-box{font-size:1.2rem;color:var(--accent);font-weight:950}
+    .date-box{font-size:.82rem;color:var(--subtext)}
+
+    .status-summary{
+      position:fixed;top:92px;right:22px;width:min(430px,calc(100vw - 44px));z-index:1200;
+      display:none;background:var(--glass);border:1px solid var(--card-border);border-radius:22px;
+      box-shadow:0 28px 70px rgba(0,0,0,.35);backdrop-filter:blur(20px);overflow:hidden;
+    }
+    .status-summary.open{display:block;animation:floatIn .25s ease}
+    .summary-head{padding:15px 17px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--card-border)}
+    .summary-head h3{font-size:1rem}
+    .summary-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:13px}
+    .summary-item{padding:13px;border:1px solid var(--card-border);border-radius:16px;background:rgba(255,255,255,.035);display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .summary-item .label{display:flex;align-items:center;gap:8px;color:var(--subtext);font-size:.84rem}
+    .summary-item .value{font-size:1.35rem;color:var(--accent);font-weight:950}
+    .summary-item.wash .value{color:var(--wash-cyan)} .summary-item.testing .value{color:var(--testing-blue)}
+    .summary-item.paused .value{color:var(--warning-orange)} .summary-item.treasury .value{color:var(--treasury-purple)}
+    .summary-foot{padding:11px 14px;color:var(--subtext);font-size:.78rem;border-top:1px solid var(--card-border)}
+
+    .grid-container{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:20px;
+      padding:8px 0 22px;align-items:stretch;
+    }
+    .car-card{
+      position:relative;display:flex;flex-direction:column;justify-content:space-between;
+      width:100%;max-width:520px;margin:0 auto;overflow:hidden;
+      padding:22px;border-radius:24px;background:var(--card-bg)!important;color:var(--text-color)!important;
+      border:1px solid var(--card-border);box-shadow:var(--shadow);
+      animation:floatIn .5s ease both;transition:.28s;
+      backdrop-filter:blur(15px);
+    }
+    .car-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.8}
+    .car-card:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--accent) 65%,var(--card-border));box-shadow:0 28px 60px rgba(0,0,0,.32)}
+    .car-card.paused-card{border-color:rgba(245,158,11,.65)!important}
+    .car-card.treasury-card{border-color:rgba(168,85,247,.65)!important}
+    .car-card.wash-card{border-color:rgba(20,184,166,.65)!important}
+    .car-card.testing-card{border-color:rgba(59,130,246,.65)!important}
+
+    .queue-badge{
+      position:absolute;top:14px;left:16px;padding:6px 12px;border-radius:999px;
+      background:var(--badge-bg);color:var(--badge-text);font-size:.76rem;font-weight:950;
+      box-shadow:0 6px 18px rgba(0,0,0,.22);animation:pulseGlow 2.4s infinite
+    }
+    .queue-badge.paused{background:var(--warning-orange);color:#111827}.queue-badge.treasury{background:var(--treasury-purple);color:#fff}
+    .queue-badge.wash{background:var(--wash-cyan);color:#fff}.queue-badge.testing{background:var(--testing-blue);color:#fff}
+
+    .car-header{display:flex;flex-direction:column;align-items:center;text-align:center;padding:15px 0 14px;border-bottom:1px solid var(--card-border)}
+    .car-title-row{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding-top:7px}
+    .car-name{font-size:1.25rem;font-weight:950}
+    .btn-print-card{border:0;background:rgba(255,255,255,.07);color:var(--accent);width:35px;height:35px;border-radius:12px;cursor:pointer;transition:.2s}
+    .btn-print-card:hover{background:var(--accent);color:#fff;transform:rotate(-5deg) scale(1.06)}
+    .car-plate-container{margin-top:10px;background:var(--accent);color:var(--badge-text);padding:6px 17px;border-radius:12px;font-size:1.12rem;letter-spacing:2px;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+    .car-plate-container.paused{background:var(--warning-orange)!important;color:#111827!important}.car-plate-container.treasury{background:var(--treasury-purple)!important;color:#fff!important}
+    .car-plate-container.wash{background:var(--wash-cyan)!important;color:#fff!important}.car-plate-container.testing{background:var(--testing-blue)!important;color:#fff!important}
+
+    .car-details{font-size:.95rem;color:var(--subtext);line-height:2;padding:14px 2px 6px}
+    .car-details strong{color:var(--text-color);font-weight:950}
+    .status-container{padding:12px;border-radius:15px;text-align:center;border:1px solid var(--card-border);background:rgba(34,199,242,.055);margin:4px 0 13px}
+    .status-container.paused{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.5)}
+    .status-container.treasury{background:rgba(168,85,247,.07);border-color:rgba(168,85,247,.5)}
+    .status-container.wash{background:rgba(20,184,166,.07);border-color:rgba(20,184,166,.5)}
+    .status-container.testing{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.5)}
+    .status-title{font-size:.72rem;color:var(--subtext);margin-bottom:3px}
+    .status-text{font-size:1rem;color:var(--accent);font-weight:950}
+    .status-text.paused{color:var(--warning-orange)}.status-text.treasury{color:var(--treasury-purple)}.status-text.wash{color:var(--wash-cyan)}.status-text.testing{color:var(--testing-blue)}
+    .btn-delete-card{width:100%;padding:11px;border:0;border-radius:13px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:.93rem;cursor:pointer;transition:.2s;box-shadow:0 10px 20px rgba(239,68,68,.18)}
+    .btn-delete-card:hover{transform:translateY(-2px);filter:brightness(1.06)}
+
+    .stamp{
+      position:absolute;top:52%;left:50%;transform:translate(-50%,-50%) rotate(-8deg);
+      padding:8px 18px;border-radius:14px;pointer-events:none;z-index:10;font-size:1.35rem;font-weight:950;opacity:.9;white-space:nowrap
+    }
+    .suspended-stamp{color:#f59e0b;background:rgba(245,158,11,.11);border:2px dashed #f59e0b}
+    .treasury-stamp{color:#a855f7;background:rgba(168,85,247,.11);border:2px solid #a855f7;font-size:1.1rem}
+    .wash-stamp{color:#14b8a6;background:rgba(20,184,166,.11);border:2px solid #14b8a6}
+    .testing-stamp{color:#3b82f6;background:rgba(59,130,246,.11);border:2px solid #3b82f6}
+
+    .idle-showcase{
+      grid-column:1/-1;position:relative;min-height:clamp(430px,62vh,700px);
+      border-radius:30px;overflow:hidden;border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 30px 80px rgba(0,0,0,.35);background:#06101c;isolation:isolate
+    }
+    .idle-photo{position:absolute;inset:-3%;width:106%;height:106%;object-fit:cover;opacity:0;transform:scale(1.04);filter:saturate(1.08) contrast(1.03);transition:opacity 1.1s ease;animation:idleZoom 8s ease-in-out infinite alternate;z-index:-3}
+    .idle-photo.active{opacity:1}
+    .idle-showcase::after{
+      content:"";position:absolute;inset:0;z-index:-2;
+      background:linear-gradient(90deg,rgba(3,10,18,.88) 0%,rgba(3,10,18,.48) 42%,rgba(3,10,18,.18) 100%),
+                 linear-gradient(0deg,rgba(3,10,18,.72),transparent 45%)
+    }
+    .idle-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:clamp(28px,6vw,80px);max-width:850px}
+    .idle-kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);border-radius:999px;color:#fff;font-size:.82rem;backdrop-filter:blur(10px)}
+    .idle-title{margin-top:15px;font-size:clamp(2rem,5vw,4.2rem);line-height:1.08;color:#fff;font-weight:950;text-shadow:0 8px 28px rgba(0,0,0,.35)}
+    .idle-text{margin-top:12px;max-width:670px;color:rgba(255,255,255,.82);font-size:clamp(.95rem,1.5vw,1.15rem);line-height:1.9}
+    .idle-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+    .idle-chip{padding:8px 13px;border-radius:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;font-size:.8rem;backdrop-filter:blur(8px)}
+    .idle-dots{position:absolute;bottom:22px;right:24px;display:flex;gap:7px}
+    .idle-dot{width:8px;height:8px;border-radius:50%;background:#fff;opacity:.35;transition:.3s}
+    .idle-dot.active{opacity:1;transform:scale(1.45);background:var(--accent)}
+
+    .bottom-ticker{
+      position:fixed;left:0;right:0;bottom:0;height:54px;z-index:1000;
+      background:linear-gradient(90deg,var(--card-bg),color-mix(in srgb,var(--card-bg) 72%,var(--accent)),var(--card-bg));
+      border-top:1px solid var(--card-border);box-shadow:0 -12px 35px rgba(0,0,0,.22);overflow:hidden;display:flex;align-items:center
+    }
+    .ticker-label{height:100%;display:flex;align-items:center;gap:8px;padding:0 18px;background:var(--accent);color:var(--badge-text);white-space:nowrap;font-size:.8rem;z-index:2;box-shadow:8px 0 20px rgba(0,0,0,.16)}
+    .ticker-window{overflow:hidden;flex:1;white-space:nowrap}
+    .ticker-track{display:inline-flex;gap:70px;min-width:max-content;animation:tickerMove 22s linear infinite}
+    .ticker-item{display:inline-flex;align-items:center;gap:9px;color:var(--text-color);font-size:.85rem}
+    .ticker-item i{color:var(--accent)}
+    .ticker-item strong{color:var(--accent)}
+
+    .settings-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.52);backdrop-filter:blur(5px);z-index:1300;display:none}
+    .settings-backdrop.open{display:block}
+    .settings-panel{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.96);width:min(520px,calc(100vw - 30px));
+      max-height:85vh;overflow:auto;z-index:1301;display:none;
+      background:var(--glass);border:1px solid var(--card-border);border-radius:26px;box-shadow:0 35px 90px rgba(0,0,0,.42);backdrop-filter:blur(22px)
+    }
+    .settings-panel.open{display:block;animation:floatIn .25s ease forwards}
+    .settings-head{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--card-border)}
+    .settings-head h3{font-size:1.1rem}.close-btn{border:0;background:transparent;color:var(--subtext);font-size:1.1rem;cursor:pointer}
+    .settings-body{padding:18px}
+    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 0;border-bottom:1px solid var(--card-border)}
+    .setting-row:last-child{border-bottom:0}.setting-label{display:flex;flex-direction:column;gap:4px}.setting-label strong{font-size:.9rem}.setting-label small{color:var(--subtext);font-size:.73rem}
+    .color-input{width:48px;height:36px;padding:3px;border-radius:10px;border:1px solid var(--card-border);background:transparent;cursor:pointer}
+    .range-input{width:170px;accent-color:var(--accent)}
+    .settings-note{margin-top:14px;padding:11px 12px;border-radius:13px;background:rgba(34,199,242,.06);border:1px solid rgba(34,199,242,.15);color:var(--subtext);font-size:.75rem;line-height:1.7}
+
+    @media(max-width:800px){
+      body{padding:12px 12px 68px}
+      .display-header{grid-template-columns:1fr;min-height:0;padding:16px}
+      .brand,.header-tools,.header-right{grid-column:1;justify-content:center}
+      .header-tools{order:3}.header-right{order:2}
+      .brand{order:1}
+      .datetime-box{align-items:center}
+      .summary-list{grid-template-columns:1fr 1fr}
+      .grid-container{grid-template-columns:1fr}
+      .car-card{max-width:none}
+      .idle-showcase{min-height:480px}
+      .idle-content{padding:28px}
+      .ticker-label{padding:0 10px}.ticker-label span{display:none}
+    }
+
+    @media print{
+      @page{size:A5 portrait;margin:10mm}
+      body *{visibility:hidden}
+      body{background:#fff!important;padding:0!important}
+      .car-card.printing-active,.car-card.printing-active *{visibility:visible!important}
+      .car-card.printing-active{position:absolute!important;left:0!important;top:0!important;width:100%!important;box-shadow:none!important;border:3px solid #000!important;background:#fff!important;margin:0!important}
+      .btn-delete-card,.btn-print-card,.queue-badge{display:none!important}
+    }
+  </style>
+
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+
+<body data-theme="dark">
+
+  <div class="display-header">
+    <div class="header-tools">
+      <button class="tool-btn primary" onclick="toggleSummary()" title="عرض ملخص الحالات">
+        <i class="fa-solid fa-chart-simple"></i><span>ملخص الحالة</span>
+      </button>
+      <button class="tool-btn" onclick="openSettings()" title="إعدادات الشاشة">
+        <i class="fa-solid fa-gear"></i><span>الإعدادات</span>
+      </button>
+    </div>
+
+    <div class="brand">
+      <img id="displayLogo" src="non.jpg" alt="شعار المركز" onerror="this.onerror=null;this.src='non.png';">
+      <div class="brand-text">
+        <h1 id="centerHeaderTitle">مركز أوتو نون</h1>
+        <small id="centerHeaderWorkshop">الاستقبال ومغسلة السيارات - شاشة متابعة الحالات والأقسام</small>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="datetime-box">
+        <div class="clock-box" id="liveClock"><i class="fa-regular fa-clock"></i> --:--:--</div>
+        <div class="date-box" id="liveDate"><i class="fa-regular fa-calendar-days"></i> ----/--/--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-summary" id="statusSummary">
+    <div class="summary-head">
+      <h3><i class="fa-solid fa-layer-group" style="color:var(--accent)"></i> ملخص حالة السيارات</h3>
+      <button class="close-btn" onclick="toggleSummary(false)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="summary-list">
+      <div class="summary-item"><div class="label"><i class="fa-solid fa-car"></i> إجمالي المفعلة</div><div class="value" id="totalCarsCount">0</div></div>
+      <div class="summary-item wash"><div class="label"><i class="fa-solid fa-soap"></i> سيارات المغسلة</div><div class="value" id="washCarsCount">0</div></div>
+      <div class="summary-item testing"><div class="label"><i class="fa-solid fa-stethoscope"></i> تحت الاختبار</div><div class="value" id="testingCarsCount">0</div></div>
+      <div class="summary-item paused"><div class="label"><i class="fa-solid fa-pause"></i> المعلقة</div><div class="value" id="pausedCarsCount">0</div></div>
+      <div class="summary-item treasury"><div class="label"><i class="fa-solid fa-cash-register"></i> متوجه للحسابات</div><div class="value" id="treasuryCarsCount">0</div></div>
+    </div>
+    <div class="summary-foot"><i class="fa-regular fa-circle-check"></i> يتم تحديث الأرقام تلقائياً مع بيانات النظام.</div>
+  </div>
+
+  <div class="grid-container" id="displayGrid">
+    <div class="idle-showcase" id="idleShowcase">
+      <img class="idle-photo active" src="non.png" alt="">
+      <img class="idle-photo" src="non (2).png" alt="">
+      <img class="idle-photo" src="non (3).png" alt="">
+      <img class="idle-photo" src="non (4).png" alt="">
+      <img class="idle-photo" src="non (5).png" alt="">
+      <img class="idle-photo" src="non (6).png" alt="">
+      <img class="idle-photo" src="non (7).png" alt="">
+      <img class="idle-photo" src="non (8).png" alt="">
+      <img class="idle-photo" src="non (9).png" alt="">
+      <div class="idle-content">
+        <span class="idle-kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> شاشة العرض الذكية</span>
+        <h2 class="idle-title">نحن جاهزون لاستقبال سيارتك</h2>
+        <p class="idle-text">لا توجد سيارات مفعلة حالياً. ستظهر السيارات والحالات والأقسام هنا تلقائياً فور تسجيلها في النظام.</p>
+        <div class="idle-actions">
+          <span class="idle-chip"><i class="fa-solid fa-rotate"></i> تحديث لحظي</span>
+          <span class="idle-chip"><i class="fa-solid fa-shield-halved"></i> متابعة آمنة</span>
+          <span class="idle-chip"><i class="fa-solid fa-bolt"></i> عرض سريع</span>
+        </div>
+      </div>
+      <div class="idle-dots" id="idleDots"></div>
+    </div>
+  </div>
+
+  <div class="bottom-ticker">
+    <div class="ticker-label"><i class="fa-solid fa-bolt"></i><span>حالة المركز</span></div>
+    <div class="ticker-window">
+      <div class="ticker-track">
+        <div class="ticker-item"><i class="fa-solid fa-car"></i> السيارات المفعلة: <strong id="tickerTotal">0</strong></div>
+        <div class="ticker-item"><i class="fa-solid fa-soap"></i> المغسلة: <strong id="tickerWash">0</strong></div>
+        <div class="ticker-item"><i class="fa-solid fa-stethoscope"></i> تحت الاختبار: <strong id="tickerTesting">0</strong></div>
+        <div class="ticker-item"><i class="fa-solid fa-pause"></i> المعلقة: <strong id="tickerPaused">0</strong></div>
+        <div class="ticker-item"><i class="fa-solid fa-cash-register"></i> الحسابات: <strong id="tickerTreasury">0</strong></div>
+        <div class="ticker-item"><i class="fa-solid fa-heart"></i> مركز أوتو نون — الدقة والجودة والسرعة</div>
+        <div class="ticker-item"><i class="fa-solid fa-car"></i> السيارات المفعلة: <strong id="tickerTotal2">0</strong></div>
+        <div class="ticker-item"><i class="fa-solid fa-soap"></i> المغسلة: <strong id="tickerWash2">0</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-backdrop" id="settingsBackdrop" onclick="closeSettings()"></div>
+  <section class="settings-panel" id="settingsPanel" aria-label="إعدادات الشاشة">
+    <div class="settings-head">
+      <h3><i class="fa-solid fa-sliders" style="color:var(--accent)"></i> إعدادات شاشة العرض</h3>
+      <button class="close-btn" onclick="closeSettings()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="settings-body">
+      <div class="setting-row">
+        <div class="setting-label"><strong>لون الخلفية</strong><small>يُحفظ تلقائياً على نفس الجهاز.</small></div>
+        <input class="color-input" type="color" id="bgColorPicker" value="#07111f" onchange="changeBackgroundCustomColor(this.value)">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label"><strong>لون الكروت</strong><small>تخصيص مظهر بطاقات السيارات.</small></div>
+        <input class="color-input" type="color" id="cardColorPicker" value="#101e31" onchange="changeCardCustomColor(this.value)">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label"><strong>اللون الرئيسي</strong><small>الأزرار والإضاءات والعناصر المهمة.</small></div>
+        <input class="color-input" type="color" id="accentColorPicker" value="#22c7f2" onchange="changeAccentCustomColor(this.value)">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label"><strong>الشفافية البصرية</strong><small>تحكم في قوة تأثير الزجاج على الشاشة.</small></div>
+        <input class="range-input" type="range" id="glassRange" min="45" max="95" value="72" oninput="changeGlassOpacity(this.value)">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label"><strong>المظهر</strong><small>الوضع الداكن أو النهاري.</small></div>
+        <button class="tool-btn" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i><span id="themeText">الوضع النهاري</span></button>
+      </div>
+      <div class="settings-note">
+        <i class="fa-solid fa-lightbulb"></i>
+        تم نقل تخصيص الألوان بالكامل إلى هنا حتى تظل الشاشة الرئيسية نظيفة واحترافية بدون عناصر تحكم ظاهرة.
+      </div>
+    </div>
+  </section>
+
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let carsMap = {};
+
+    function openSettings(){
+      document.getElementById('settingsPanel').classList.add('open');
+      document.getElementById('settingsBackdrop').classList.add('open');
+    }
+    function closeSettings(){
+      document.getElementById('settingsPanel').classList.remove('open');
+      document.getElementById('settingsBackdrop').classList.remove('open');
+    }
+    function toggleSummary(force){
+      const panel=document.getElementById('statusSummary');
+      const shouldOpen = typeof force === 'boolean' ? force : !panel.classList.contains('open');
+      panel.classList.toggle('open', shouldOpen);
+    }
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){closeSettings();toggleSummary(false);}
+    });
+
+    function setCssVar(name,value){document.documentElement.style.setProperty(name,value);}
+    function changeBackgroundCustomColor(colorCode){
+      setCssVar('--bg-color',colorCode);
+      setCssVar('--bg-secondary',colorCode);
+      localStorage.setItem('autonon_custom_bg',colorCode);
+    }
+    function changeCardCustomColor(colorCode){
+      setCssVar('--card-bg',colorCode);
+      localStorage.setItem('autonon_custom_card',colorCode);
+    }
+    function changeAccentCustomColor(colorCode){
+      setCssVar('--accent',colorCode);
+      setCssVar('--accent-hover',colorCode);
+      localStorage.setItem('autonon_custom_accent',colorCode);
+    }
+    function changeGlassOpacity(value){
+      const alpha=(Number(value)/100).toFixed(2);
+      setCssVar('--glass',`rgba(15,31,51,${alpha})`);
+      localStorage.setItem('autonon_glass',value);
+    }
+
+    function toggleTheme(){
+      const body=document.body;
+      const light=body.getAttribute('data-theme')==='light';
+      body.setAttribute('data-theme',light?'dark':'light');
+      const label=document.getElementById('themeText');
+      if(label) label.textContent=light?'الوضع النهاري':'الوضع الداكن';
+      localStorage.setItem('autonon_theme',light?'dark':'light');
+    }
+
+    (function loadDisplaySettings(){
+      const bg=localStorage.getItem('autonon_custom_bg');
+      const card=localStorage.getItem('autonon_custom_card');
+      const accent=localStorage.getItem('autonon_custom_accent');
+      const glass=localStorage.getItem('autonon_glass');
+      const theme=localStorage.getItem('autonon_theme');
+      if(bg){changeBackgroundCustomColor(bg);document.getElementById('bgColorPicker').value=bg;}
+      if(card){changeCardCustomColor(card);document.getElementById('cardColorPicker').value=card;}
+      if(accent){changeAccentCustomColor(accent);document.getElementById('accentColorPicker').value=accent;}
+      if(glass){changeGlassOpacity(glass);document.getElementById('glassRange').value=glass;}
+      if(theme==='light'){document.body.setAttribute('data-theme','light');document.getElementById('themeText').textContent='الوضع الداكن';}
+    })();
+
+    function updateDateTime(){
+      const now = new Date();
+      document.getElementById('liveClock').innerHTML = `<i class="fa-regular fa-clock"></i> ` + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      document.getElementById('liveDate').innerHTML = `<i class="fa-regular fa-calendar-days"></i> ` + now.toLocaleDateString('ar-EG', { weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric' });
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+
+    async function removeCarFromDisplay(carDocId) {
+      if (confirm("هل تريد إتمام الدفع، أرشفة الفاتورة، وحذف السجل من شاشة العرض والحسابات؟")) {
+        try {
+          const currentSelectedQueueItem = carsMap[carDocId] || { docId: carDocId };
+
+          await db.collection('customers_accounts').add({
+            ...currentSelectedQueueItem,
+            archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            status: 'DONE',
+            clientStatus: 'DONE'
+          });
+
+          try {
+            await db.collection('accounting_queue').doc(carDocId).delete();
+          } catch (err) {
+            console.log("المستند غير موجود في accounting_queue:", err);
+          }
+
+          await db.collection('cars').doc(carDocId).update({
+            status: 'DONE',
+            clientStatus: 'DONE',
+            showOnDisplay: false
+          });
+
+          alert("تمت إزالة السيارة بنجاح، أرشفتها، وتحديث حالتها إلى منتهي.");
+        } catch (err) {
+          alert("خطأ أثناء تنفيذ العملية: " + err.message);
+        }
+      }
+    }
+
+    function printSingleCard(buttonElement) {
+      const card = buttonElement.closest('.car-card');
+      document.querySelectorAll('.car-card').forEach(c => c.classList.remove('printing-active'));
+      card.classList.add('printing-active');
+      window.print();
+      setTimeout(() => {
+        card.classList.remove('printing-active');
+      }, 500);
+    }
+
+
+    let idleTimer = null;
+    let idleIndex = 0;
+
+    function renderIdleShowcase(){
+      const grid=document.getElementById('displayGrid');
+      grid.innerHTML=`
+        <div class="idle-showcase" id="idleShowcase">
+          <img class="idle-photo active" src="non.png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (2).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (3).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (4).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (5).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (6).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (7).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (8).png" alt="" onerror="this.style.display='none'">
+          <img class="idle-photo" src="non (9).png" alt="" onerror="this.style.display='none'">
+          <div class="idle-content">
+            <span class="idle-kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> شاشة العرض الذكية</span>
+            <h2 class="idle-title">نحن جاهزون لاستقبال سيارتك</h2>
+            <p class="idle-text">لا توجد سيارات مفعلة حالياً. ستظهر السيارات والحالات والأقسام هنا تلقائياً فور تسجيلها في النظام.</p>
+            <div class="idle-actions">
+              <span class="idle-chip"><i class="fa-solid fa-rotate"></i> تحديث لحظي</span>
+              <span class="idle-chip"><i class="fa-solid fa-shield-halved"></i> متابعة آمنة</span>
+              <span class="idle-chip"><i class="fa-solid fa-bolt"></i> عرض سريع</span>
+            </div>
+          </div>
+          <div class="idle-dots" id="idleDots"></div>
+        </div>`;
+      startIdleSlideshow();
+    }
+
+    function startIdleSlideshow(){
+      clearInterval(idleTimer);
+      const photos=[...document.querySelectorAll('.idle-photo')];
+      const dots=document.getElementById('idleDots');
+      if(!photos.length || !dots) return;
+      idleIndex=0;
+      dots.innerHTML=photos.map((_,i)=>`<span class="idle-dot ${i===0?'active':''}"></span>`).join('');
+      idleTimer=setInterval(()=>{
+        if(!document.getElementById('idleShowcase')){clearInterval(idleTimer);return;}
+        photos[idleIndex].classList.remove('active');
+        idleIndex=(idleIndex+1)%photos.length;
+        photos[idleIndex].classList.add('active');
+        [...dots.children].forEach((d,i)=>d.classList.toggle('active',i===idleIndex));
+      },6500);
+    }
+
+    function setText(id,value){
+      const el=document.getElementById(id);
+      if(el) el.textContent=value;
+    }
+
+    function escapeDisplayText(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    db.collection('cars').onSnapshot((snapshot) => {
+      const grid = document.getElementById('displayGrid');
+      grid.innerHTML = '';
+      carsMap = {};
+
+      let activeIndex = 1;
+      let displayCars = [];
+      let pausedCount = 0;
+      let treasuryCount = 0;
+      let washCount = 0;
+      let testingCount = 0;
+      let activeWorkshops = new Set();
+
+      snapshot.forEach((doc) => {
+        const car = { docId: doc.id, ...doc.data() };
+        carsMap[car.docId] = car;
+
+        if (car.showOnDisplay === false || car.clientStatus === 'OFF' || car.status === 'DONE') return;
+
+        let isTreasury = car.status === 'SENT_TO_TREASURY' || car.status === 'IN_TREASURY' || car.status === 'COMPLETED' || car.clientStatus === 'COMPLETED' || car.clientStatus === 'جاري الدفع (العميل في الحسابات)';
+        let isPaused = car.status === 'SUSPENDED' || car.isSuspended === true || car.isPaused === true || car.status === 'PENDING_APPROVAL' || car.status === 'WAITING_FOR_PARTS' || car.status === 'paused';
+        let isWash = car.targetDepartment === 'مغسلة السيارات' || car.serviceType === 'مغسلة' || car.workshop === 'مغسلة أوتو نون' || car.department === 'wash';
+        const testDriveStatus = car.testDriveStatus || 'لم يتم الاختبار بعد';
+        const testDriveIsActive = testDriveStatus === 'السيارة تحت الاختبار';
+        let isTesting = testDriveIsActive || car.status === 'TESTING' || car.status === 'تحت الاختبار' || car.isTesting === true || car.clientStatus === 'تحت الاختبار';
+
+        displayCars.push({ ...car, isPaused, isTreasury, isWash, isTesting });
+
+        if (isTreasury) {
+          treasuryCount++;
+        } else if (isWash) {
+          washCount++;
+        } else if (isTesting) {
+          testingCount++;
+        } else if (isPaused) {
+          pausedCount++;
+        }
+
+        let deptOrWorkshop = car.targetDepartment || car.serviceType || car.workshop || car.mechanicSubCategory;
+        if (deptOrWorkshop) {
+          activeWorkshops.add(deptOrWorkshop);
+        }
+      });
+
+      const workshopSubElem = document.getElementById('centerHeaderWorkshop');
+      if (activeWorkshops.size > 0) {
+        workshopSubElem.textContent = `الأقسام وورش العمل ومغسلة السيارات النشطة: ${Array.from(activeWorkshops).join(' - ')}`;
+      } else {
+        workshopSubElem.textContent = `الاستقبال ومغسلة السيارات - شاشة متابعة الحالة والأقسام`;
+      }
+
+      setText('totalCarsCount', displayCars.length);
+      setText('washCarsCount', washCount);
+      setText('pausedCarsCount', pausedCount);
+      setText('treasuryCarsCount', treasuryCount);
+      setText('testingCarsCount', testingCount);
+      setText('tickerTotal', displayCars.length); setText('tickerTotal2', displayCars.length);
+      setText('tickerWash', washCount); setText('tickerWash2', washCount);
+      setText('tickerPaused', pausedCount);
+      setText('tickerTreasury', treasuryCount);
+      setText('tickerTesting', testingCount);
+
+      if (displayCars.length === 0) {
+        renderIdleShowcase();
+        return;
+      }
+      clearInterval(idleTimer);
+
+      displayCars.forEach((car) => {
+        let clientName = car.clientName || car.name || 'غير مسجل';
+        let carPlate = car.plate || car.carPlate || 'بدون لوحة';
+        let carInfo = `${car.brand || ''} ${car.model || ''}`.trim() || 'سيارة صيانة';
+        let serialNumber = car.serialNo || car.serialNumber || 'غير متوفر';
+        
+        let workshopName = car.workshop || 'مركز أوتو نون';
+        let sectionName = car.targetDepartment || car.serviceType || car.mechanicSubCategory || car.section || 'الاستقبال';
+
+        let isTreasury = car.isTreasury;
+        let isPaused = car.isPaused;
+        let isWash = car.isWash;
+        let isTesting = car.isTesting;
+
+        let cardClass = isTreasury ? 'car-card treasury-card' : (isWash ? 'car-card wash-card' : (isTesting ? 'car-card testing-card' : (isPaused ? 'car-card paused-card' : 'car-card')));
+        let badgeClass = isTreasury ? 'queue-badge treasury' : (isWash ? 'queue-badge wash' : (isTesting ? 'queue-badge testing' : (isPaused ? 'queue-badge paused' : 'queue-badge')));
+        let plateClass = isTreasury ? 'car-plate-container treasury' : (isWash ? 'car-plate-container wash' : (isTesting ? 'car-plate-container testing' : (isPaused ? 'car-plate-container paused' : 'car-plate-container')));
+        let statusContainerClass = isTreasury ? 'status-container treasury' : (isWash ? 'status-container wash' : (isTesting ? 'status-container testing' : (isPaused ? 'status-container paused' : 'status-container')));
+        let statusTextClass = isTreasury ? 'status-text treasury' : (isWash ? 'status-text wash' : (isTesting ? 'status-text testing' : (isPaused ? 'status-text paused' : 'status-text')));
+        const testDriveStatusStyle = car.testDriveStatus === 'تم الاختبار وتم الإصلاح بنجاح'
+          ? 'color:#16a34a;' : (car.testDriveStatus === 'ما زال العطل مستمرا ويحتاج إعادة ضبط'
+          ? 'color:#ef4444;' : (car.testDriveStatus === 'لم يتم الاختبار بعد' ? 'color:#f59e0b;' : ''));
+        
+        let stampHtml = '';
+        if (isTreasury || car.clientStatus === 'جاري الدفع (العميل في الحسابات)') {
+          stampHtml = `<div class="treasury-stamp">جاري الدفع (العميل في الحسابات) 🟣</div>`;
+        } else if (isWash) {
+          stampHtml = `<div class="wash-stamp">قيد مغسلة السيارات 🫧</div>`;
+        } else if (isTesting) {
+          stampHtml = `<div class="testing-stamp">تحت الاختبار 🔍</div>`;
+        } else if (isPaused) {
+          stampHtml = `<div class="suspended-stamp">معلق ⏸️️</div>`;
+        }
+
+        const testDriveStatusLabels = {
+          'لم يتم الاختبار بعد': '⏳ لم يتم الاختبار بعد',
+          'السيارة تحت الاختبار': '🚗 السيارة تحت الاختبار الآن',
+          'تم الاختبار وتم الإصلاح بنجاح': '✅ تم الاختبار وتم الإصلاح بنجاح',
+          'ما زال العطل مستمرا ويحتاج إعادة ضبط': '⚠️ ما زال العطل مستمراً'
+        };
+        const hasTestDriveResult = !!car.testDriveStatus && car.testDriveStatus !== 'لم يتم الاختبار بعد';
+        let operationalStatusMsg = (car.clientStatus === 'جاري الدفع (العميل في الحسابات)' || isTreasury)
+          ? `جاري الدفع (العميل في الحسابات) 🟣`
+          : (hasTestDriveResult ? (testDriveStatusLabels[car.testDriveStatus] || car.testDriveStatus)
+          : (isWash ? `جاري الغسيل والتطهير في المغسلة 🫧` : (isTesting ? `السيارة تحت الاختبار والصيانة 🔍` : (isPaused ? `معلقة (${car.suspendReason || 'بانتظار إجراء'}) ⏸️` : (car.statusLabel || `${sectionName} 🛠`)))));
+
+        grid.innerHTML += `
+          <div class="${cardClass}">
+            ${stampHtml}
+            <div class="${badgeClass}">رقم الدور ${activeIndex++}</div>
+            
+            <div class="car-header">
+              <div class="car-title-row">
+                <div class="car-name"><i class="fa-solid fa-car-side" style="color:var(--accent)"></i> ${carInfo}</div>
+                <button class="btn-print-card" onclick="printSingleCard(this)" title="طباعة كارت السيارة">
+                  <i class="fa-solid fa-print"></i>
+                </button>
+              </div>
+              <div class="${plateClass}">${carPlate}</div>
+            </div>
+
+            <div class="car-details">
+              <div><i class="fa-solid fa-user" style="color:var(--accent)"></i> اسم العميل: <strong>${clientName}</strong></div>
+              <div><i class="fa-solid fa-id-card" style="color:var(--accent)"></i> السيريال نمبر: <strong style="color:var(--accent);">${serialNumber}</strong></div>
+              <div><i class="fa-solid fa-warehouse" style="color:var(--accent)"></i> المركز والورشة: <strong style="color:var(--accent);">${workshopName}</strong></div>
+              <div><i class="fa-solid fa-screwdriver-wrench" style="color:var(--accent)"></i> القسم الحالي: <strong style="color:var(--accent);">${sectionName}</strong></div>
+              ${car.testDriveStatus ? `<div><i class="fa-solid fa-user-gear" style="color:var(--accent)"></i> فني الاختبار: <strong>${escapeDisplayText(car.testDriveTester || car.assignedTechnician || 'غير محدد')}</strong></div>` : ''}
+              ${car.testDriveNotes ? `<div><i class="fa-solid fa-clipboard-check" style="color:var(--accent)"></i> ملاحظات الفحص: <strong>${escapeDisplayText(car.testDriveNotes)}</strong></div>` : ''}
+            </div>
+
+            <div class="${statusContainerClass}">
+              <div class="status-title">الحالة التشغيلية الحالية</div>
+              <div class="${statusTextClass}" style="${testDriveStatusStyle}">${operationalStatusMsg}</div>
+            </div>
+
+            <button class="btn-delete-card" onclick="removeCarFromDisplay('${car.docId}')">
+              <i class="fa-solid fa-trash-can"></i> إزالة وحذف من الشاشة
+            </button>
+          </div>
+        `;
+      });
+    }, (error) => {
+      console.error("خطأ في جلب بيانات الشاشة:", error);
+    });
+  </script>
+</body>
+</html>

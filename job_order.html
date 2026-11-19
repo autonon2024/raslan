@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مركز أوتو نون (NON) - جيب الأوردر وإذن التسليم</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary-orange: #ea580c;
+      --text-main: #0f172a;
+      --border-color: #cbd5e1;
+      --slip-height: 8.5cm; 
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    body {
+      direction: rtl !important;
+      text-align: right !important;
+      background-color: #f1f5f9;
+      color: var(--text-main);
+      padding: 10px;
+    }
+
+    .client-selector-bar {
+      max-width: 210mm;
+      margin: 0 auto 10px auto;
+      background: #ffffff;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      flex-wrap: wrap;
+    }
+    .client-selector-bar select {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-size: 0.9rem;
+      outline: none;
+      background: #fff;
+    }
+
+    .job-order-sheet {
+      background: #ffffff;
+      width: 210mm;
+      height: 292mm;
+      margin: 0 auto;
+      padding: 4mm 8mm;
+      border: 2px solid var(--primary-orange);
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary-orange);
+      padding-bottom: 2px;
+      margin-bottom: 2px;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-area img { width: 34px; height: 34px; object-fit: contain; border-radius: 50%; }
+    .logo-area h1 { font-size: 1rem; color: var(--primary-orange); font-weight: bold; }
+    .logo-area p { font-size: 0.65rem; color: #64748b; }
+
+    .meta-box {
+      border: 1.5px solid var(--primary-orange);
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-align: center;
+      background: #fffdf5;
+    }
+    .meta-box h3 { font-size: 0.65rem; color: var(--primary-orange); }
+    .meta-box span { font-size: 0.85rem; font-weight: bold; }
+
+    .section-title {
+      background: rgba(234, 88, 12, 0.1);
+      color: var(--primary-orange);
+      padding: 2px 6px;
+      font-weight: bold;
+      font-size: 0.75rem;
+      border-right: 3px solid var(--primary-orange);
+      margin-top: 2px;
+      margin-bottom: 2px;
+      border-radius: 3px;
+    }
+
+    .compact-info-container {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin-bottom: 2px;
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .info-line {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed #e2e8f0;
+      padding-bottom: 2px;
+    }
+    .info-line:last-child { border-bottom: none; }
+    .info-item { flex: 1; display: flex; gap: 5px; }
+    .info-item span:first-child { font-weight: bold; color: #334155; }
+
+    .car-checklist-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2px;
+      font-size: 0.7rem;
+      text-align: center;
+    }
+    .car-checklist-table th, .car-checklist-table td {
+      border: 1px solid var(--border-color);
+      padding: 2px 4px;
+    }
+    .car-checklist-table th { background: #e0f2fe; color: #0369a1; font-weight: bold; }
+    .checklist-item { display: flex; justify-content: space-between; align-items: center; padding: 1px 3px; }
+    .checkbox-box { width: 10px; height: 10px; border: 1px solid #64748b; display: inline-block; background: #f8fafc; border-radius: 2px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 0.72rem; }
+    th, td { border: 1.2px solid var(--border-color); padding: 3px 5px; text-align: right; }
+    th { background: #f8fafc; color: var(--primary-orange); font-weight: bold; }
+
+    .tech-notes-box {
+      border: 1px solid var(--border-color);
+      background: #f8fafc;
+      padding: 3px 6px;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      font-size: 0.72rem;
+    }
+
+    .dotted-lines {
+      margin-top: 1px;
+      line-height: 1.3;
+      background-image: linear-gradient(to bottom, transparent 90%, #cbd5e1 90%);
+      background-size: 100% 15px;
+      color: #64748b;
+      font-size: 0.65rem;
+      min-height: 20px;
+    }
+
+    .signatures-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5cm; 
+      margin-bottom: 50px;
+      padding: 4px 8px;
+      border-top: 1.5px dashed var(--border-color);
+      border-bottom: 1.5px dashed var(--border-color);
+      background: #fafaf9;
+      font-size: 0.75rem;
+    }
+    .signature-box {
+      flex: 1;
+      font-weight: bold;
+      color: #1e293b;
+    }
+    .stamp-box {
+      width: 70px;
+      height: 40px;
+      border: 2px dashed #94a3b8;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 0.6rem;
+      background: #fff;
+      margin: 0 10px;
+      text-align: center;
+    }
+
+    .external-cut-wrapper {
+      margin-top: 2px;
+      margin-bottom: 2px;
+      border-top: 1px dashed #64748b;
+      padding-top: 2px;
+    }
+    .external-cut-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0f172a;
+      font-size: 0.7rem;
+      font-weight: normal;
+      background: #f8fafc;
+      padding: 2px;
+      border-radius: 4px;
+      border: 1px dashed #cbd5e1;
+    }
+
+    .delivery-slip {
+      height: var(--slip-height);
+      border: 2px solid #15803d;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background-color: #dcfce7;
+      background-image: 
+        radial-gradient(#15803d 20%, transparent 21%),
+        radial-gradient(#15803d 20%, transparent 21%);
+      background-size: 18px 18px;
+      background-position: 0 0, 9px 9px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .delivery-slip::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(240, 253, 244, 0.88);
+      z-index: 1;
+    }
+
+    .delivery-slip > * {
+      position: relative;
+      z-index: 2;
+    }
+
+    .slip-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #14532d;
+      font-weight: bold;
+      font-size: 0.82rem;
+      border-bottom: 1.5px solid #16a34a;
+      padding-bottom: 2px;
+    }
+    .slip-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      font-size: 0.7rem;
+    }
+    .slip-box {
+      background: #ffffff;
+      border: 1px solid #86efac;
+      padding: 3px 5px;
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .slip-box span { display: block; font-size: 0.6rem; color: #166534; font-weight: bold; }
+    .slip-box strong { font-size: 0.72rem; color: #0f172a; }
+
+    .print-controls {
+      text-align: center;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-print-action {
+      background: var(--primary-orange);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(234, 88, 12, 0.4);
+    }
+    .btn-sync-action {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(2, 132, 199, 0.4);
+    }
+
+    @media print {
+      body { background: #ffffff; padding: 0; margin: 0; }
+      .print-controls, .client-selector-bar { display: none; }
+      .job-order-sheet { border: none; box-shadow: none; width: 100%; height: 100vh; min-height: 0; padding: 2mm 5mm; margin: 0; overflow: hidden; }
+      .job-order-sheet, .job-order-sheet * { break-inside: avoid; page-break-inside: avoid; }
+      @page { size: A4 portrait; margin: 2mm; }
+    }
+  </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <div class="client-selector-bar">
+    <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 250px;">
+      <i class="fa-solid fa-users" style="color: var(--primary-orange);"></i>
+      <select id="clientsDropdown" onchange="onClientSelectedFromDropdown()">
+        <option value="">-- جاري تحميل قائمة العملاء... --</option>
+      </select>
+    </div>
+    <button class="btn-sync-action" onclick="loadClientsFromFirebase()" style="padding: 6px 12px; font-size: 0.8rem;"><i class="fa-solid fa-rotate"></i> تحديث</button>
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; border-top:1px solid #e2e8f0; padding-top:8px;">
+      <label for="advancePaymentInput" style="font-weight:bold; color:#166534;">الدفعة المقدمة المدفوعة (ج.م):</label>
+      <input id="advancePaymentInput" type="number" min="0" step="0.01" placeholder="اكتب المبلغ إن وُجد" style="flex:1; min-width:150px; padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+      <button class="btn-sync-action" onclick="saveJobOrderAdvance()" style="background:#16a34a; padding:8px 14px;"><i class="fa-solid fa-floppy-disk"></i> حفظ الدفعة وإرسال للحسابات</button>
+      <small style="color:#64748b; width:100%;">لو المبلغ فارغ أو صفر، لن يظهر جيب الأوردر في قائمة الحسابات.</small>
+    </div>
+  </div>
+
+  <div class="print-controls">
+    <button class="btn-print-action" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة جيب الأوردر وإذن التسليم</button>
+  </div>
+
+  <div class="job-order-sheet">
+    
+    <div>
+      <div class="header-section">
+        <div class="logo-area">
+          <img src="non.png" alt="NON Logo">
+          <div>
+            <h1>مركز أوتو نون (NON)</h1>
+            <p>لصيانة وتبريد وزوايا السيارات المتقدمة</p>
+          </div>
+        </div>
+        <div class="meta-box">
+          <h3>رقم جيب الأوردر (Serial)</h3>
+          <span id="jobFooterSerial">NON-JOB-001</span>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="fa-solid fa-user-circle"></i> بيانات العميل والمركبة الأساسية</div>
+      <div class="compact-info-container">
+        <div class="info-line">
+          <div class="info-item"><span>اسم العميل:</span> <span id="jobClientName">--</span></div>
+          <div class="info-item"><span>رقم الهاتف:</span> <span id="jobClientPhone">--</span></div>
+        </div>
+        <div class="info-line">
+          <div class="info-item"><span>الماركة:</span> <span id="jobBrand">--</span></div>
+          <div class="info-item"><span>الموديل:</span> <span id="jobModel">--</span></div>
+          <div class="info-item"><span>رقم اللوحة:</span> <span id="jobPlate">--</span></div>
+        </div>
+        <div class="info-line">
+          <div class="info-item"><span>قراءة العداد:</span> <span id="jobOdo">--</span></div>
+          <div class="info-item"><span>تاريخ الاستلام:</span> <span id="jobDate">--</span></div>
+          <div class="info-item"><span>الشاصيه (VIN):</span> <span id="jobSerialText">--</span></div>
+        </div>
+      </div>
+
+      <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fa-solid fa-car-side"></i> محضر استلام ومشتملات السيارة</span>
+        <span style="font-size: 0.65rem; color: #1e293b;">نوع الفحص: [✔️] كشف عام &nbsp; | &nbsp; [✔️] صيانة سريعة</span>
+      </div>
+
+      <table class="car-checklist-table">
+        <tr>
+          <td><div class="checklist-item"><span>طقم عدة</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>كوريك</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>اريال راديو</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>مساحات الزجاج</span><span class="checkbox-box"></span></div></td>
+          <td rowspan="4" style="width: 14%; background: #f8fafc; vertical-align: middle; text-align: center;">
+            <svg width="36" height="85" viewBox="0 0 50 120" style="display:block; margin:0 auto;">
+              <rect x="12" y="10" width="26" height="95" rx="5" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+              <rect x="15" y="13" width="20" height="18" rx="2" fill="#22c55e" />
+              <rect x="15" y="33" width="20" height="18" rx="2" fill="#84cc16" />
+              <rect x="15" y="53" width="20" height="18" rx="2" fill="#eab308" />
+              <rect x="15" y="73" width="20" height="18" rx="2" fill="#f97316" />
+              <rect x="15" y="93" width="20" height="10" rx="2" fill="#ef4444" />
+              <text x="25" y="26" font-size="11" fill="white" font-weight="bold" text-anchor="middle">F</text>
+              <text x="25" y="101" font-size="9" fill="white" font-weight="bold" text-anchor="middle">E</text>
+            </svg>
+            <span style="font-size: 0.55rem; color: #0369a1; font-weight: bold; display:block; margin-top:1px;">مستوى الوقود</span>
+          </td>
+        </tr>
+        <tr>
+          <td><div class="checklist-item"><span>شنطة اسعافات</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>مثلث عاكس</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>طفاية حريق</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>مفتاح عجل + لوك</span><span class="checkbox-box"></span></div></td>
+        </tr>
+        <tr>
+          <td><div class="checklist-item"><span>كنترول كاست (الدرج)</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>ولاعة سجائر</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>طاصات العجل</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>فرش الأرضية</span><span class="checkbox-box"></span></div></td>
+        </tr>
+        <tr>
+          <td><div class="checklist-item"><span>الاستبنة (الإطار الاحتياطي)</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>مرايا جانبية</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>إشارات ومصابيح</span><span class="checkbox-box"></span></div></td>
+          <td><div class="checklist-item"><span>فحص الباب والتابلوه</span><span class="checkbox-box"></span></div></td>
+        </tr>
+      </table>
+
+      <div class="section-title"><i class="fa-solid fa-comment-dots"></i> شكوى العميل (كما وصفها عند الاستقبال)</div>
+      <div class="tech-notes-box" id="jobGeneralNotesDisplay" style="min-height: 22px; font-weight: bold;">
+        --
+      </div>
+
+      <div class="section-title"><i class="fa-solid fa-screwdriver-wrench"></i> جدول الأعمال المطلوبة وتقدير التكلفة</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 70%;">وصف الإصلاح / أعمال الصيانة / الفحص الفني</th>
+            <th style="width: 30%; text-align: center;">التكلفة التقديرية (ج.م)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td id="jobLaborDescRow" style="font-weight: bold;">فحص شامل وأعمال صيانة مركزية</td>
+            <td id="jobLaborCostRow" style="text-align: center; font-weight: bold; color: #ea580c;">0 ج.م</td>
+          </tr>
+          <tr>
+            <td style="color: #16a34a; font-weight: bold;">الدفعة المقدمة المدفوعة (تأكيد الحجز)</td>
+            <td id="jobAdvancePayRow" style="text-align: center; font-weight: bold; color: #16a34a;">0 ج.م</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-title" style="margin-top: 3px;"><i class="fa-solid fa-clipboard-check"></i> ملاحظات الفحص والتشخيص الإضافية</div>
+      <div class="dotted-lines" id="jobExtraNotesLine"></div>
+    </div>
+
+    <div>
+      <div class="signatures-section">
+        <div class="signature-box">
+          توقيع واستلام المهندس / الفني: <br><span style="color: #64748b; font-weight: normal;">........................................</span>
+        </div>
+        <div class="stamp-box">
+          <i class="fa-solid fa-stamp" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1px;"></i>
+          <span>مكان الختم</span>
+        </div>
+        <div class="signature-box" style="text-align: left;">
+          توقيع العميل (إقرار بالموافقة): <br><span style="color: #64748b; font-weight: normal;">........................................</span>
+        </div>
+      </div>
+
+      <!-- تم تعديل الخط ليكون خفيفاً وباللون الأسود الهادئ -->
+      <div class="external-cut-wrapper">
+        <div class="external-cut-line">
+          <i class="fa-solid fa-scissors" style="margin-left: 6px; color: #64748b;"></i> 
+          قص من هنا - إذن تسليم وخروج السيارة من المركز 
+          <i class="fa-solid fa-scissors" style="margin-right: 6px; color: #64748b;"></i>
+        </div>
+      </div>
+
+      <div class="delivery-slip">
+        <div class="slip-header">
+          <span><i class="fa-solid fa-car"></i> إذن خروج وتيسير صيانة - مركز أوتو نون (NON)</span>
+          <span id="slipDate">التاريخ: --</span>
+        </div>
+        <div class="slip-grid">
+          <div class="slip-box"><span>العميل:</span><strong id="slipClientName">--</strong></div>
+          <div class="slip-box"><span>السيارة:</span><strong id="slipCarModel">--</strong></div>
+          <div class="slip-box"><span>رقم اللوحة:</span><strong id="slipPlate">--</strong></div>
+          <div class="slip-box"><span>رقم الدور:</span><strong id="slipQueue">-</strong></div>
+          <div class="slip-box" style="border-color: #16a34a; background: #f0fdf4;"><span>المبلغ المقدم:</span><strong id="slipAdvancePay" style="color: #16a34a;">--</strong></div>
+        </div>
+        <div style="font-size: 0.65rem; color: #14532d; font-weight: bold;">
+          <strong>حالة التسليم:</strong> تم فحص السيارة وإتمام الأعمال المطلوبة بالمركز بنجاح، وخروجها تحت إشراف مهندس الاستقبال.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    let loadedCarsList = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadClientsFromFirebase();
+    });
+
+    async function loadClientsFromFirebase() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const carId = params.get('carId');
+        const shouldPrint = params.get('print') === '1';
+
+        if (carId) {
+          const doc = await db.collection("cars").doc(decodeURIComponent(carId)).get();
+          if (!doc.exists) {
+            alert("لم يتم العثور على بيانات السيارة المطلوبة.");
+            return;
+          }
+
+          const car = { id: doc.id, ...doc.data() };
+          loadedCarsList = [car];
+          const dropdown = document.getElementById('clientsDropdown');
+          if (dropdown) {
+            dropdown.innerHTML = `<option value="${car.id}">${car.clientName || car.name || 'بدون اسم'} - ${car.brand || ''} ${car.model || ''} [لوحة: ${car.plate || car.carPlate || 'بدون لوحة'}]</option>`;
+            dropdown.value = car.id;
+          }
+          populateJobOrderFields(car);
+
+          if (shouldPrint) {
+            setTimeout(() => window.print(), 700);
+          }
+          return;
+        }
+
+        const snapshot = await db.collection("cars").get();
+        loadedCarsList = [];
+        let optionsHtml = '<option value="">-- اختر عميلاً لعرض جيب الأوردر الخاص به --</option>';
+
+        snapshot.forEach((doc) => {
+          const car = { id: doc.id, ...doc.data() };
+          loadedCarsList.push(car);
+
+          const clientName = car.clientName || car.name || 'بدون اسم';
+          const plate = car.plate || car.carPlate || 'بدون لوحة';
+          const brandModel = `${car.brand || ''} ${car.model || ''}`;
+          const queue = car.queueNo ? `(دور: ${car.queueNo})` : '';
+
+          optionsHtml += `<option value="${car.id}">${clientName} - ${brandModel} [لوحة: ${plate}] ${queue}</option>`;
+        });
+
+        const dropdown = document.getElementById('clientsDropdown');
+        if (dropdown) {
+          dropdown.innerHTML = optionsHtml;
+          if (loadedCarsList.length > 0) {
+            dropdown.value = loadedCarsList[0].id;
+            populateJobOrderFields(loadedCarsList[0]);
+          }
+        }
+      } catch (err) {
+        console.error("خطأ في جلب العملاء:", err);
+        alert("حدث خطأ أثناء تحميل بيانات جيب الأوردر.");
+      }
+    }
+
+    function onClientSelectedFromDropdown() {
+      const dropdown = document.getElementById('clientsDropdown');
+      const selectedId = dropdown.value;
+      if (!selectedId) return;
+
+      const selectedCar = loadedCarsList.find(c => c.id === selectedId);
+      if (selectedCar) {
+        populateJobOrderFields(selectedCar);
+      }
+    }
+
+
+    // حفظ الدفعة المقدمة في بيانات السيارة وإرسالها لقائمة الحسابات فقط إذا كانت أكبر من صفر.
+    async function saveJobOrderAdvance() {
+      const selectedId = document.getElementById('clientsDropdown').value;
+      const car = loadedCarsList.find(item => item.id === selectedId);
+      const amountInput = document.getElementById('advancePaymentInput');
+      const amount = Math.max(0, parseFloat(amountInput.value) || 0);
+
+      if (!car) {
+        alert('اختر السيارة أولاً قبل حفظ الدفعة المقدمة.');
+        return;
+      }
+
+      const queueDocId = 'joborder_' + car.id;
+      try {
+        // حفظ القيمة في مستند السيارة حتى تظهر عند فتح جيب الأوردر مرة أخرى.
+        await db.collection('cars').doc(car.id).update({
+          advancePayment: amount,
+          advancePaymentUpdatedAt: new Date().toISOString()
+        });
+
+        car.advancePayment = amount;
+
+        if (amount > 0) {
+          const queueData = {
+            carId: car.id,
+            source: 'job_order_advance',
+            clientName: car.clientName || car.name || '--',
+            phone: car.phone || car.clientPhone || '',
+            carInfo: `${car.brand || ''} ${car.model || ''}`.trim(),
+            carPlate: car.plate || car.carPlate || '',
+            invoiceNumber: car.serialNo || car.serial || ('NON-JOB-' + (car.queueNo || '001')),
+            fromDept: 'جيب الأوردر',
+            advancePayment: amount,
+            partsCost: parseFloat(car.partsCost) || 0,
+            servicesCost: parseFloat(car.servicesCost || car.laborCost) || 0,
+            partsDescription: car.partsDescription || '',
+            servicesDescription: car.servicesDescription || car.laborNotes || '',
+            updatedAt: new Date().toISOString()
+          };
+          await db.collection('accounting_queue').doc(queueDocId).set(queueData, { merge: true });
+          alert('تم حفظ الدفعة وإرسال جيب الأوردر إلى قائمة الحسابات.');
+        } else {
+          // نحذف سجل جيب الأوردر الخاص بهذه السيارة فقط، ولا نمس أي وارد آخر للحسابات.
+          await db.collection('accounting_queue').doc(queueDocId).delete();
+          alert('تم حفظ قيمة صفر. لن يظهر جيب الأوردر في قائمة الحسابات.');
+        }
+
+        populateJobOrderFields(car);
+      } catch (error) {
+        console.error('خطأ في حفظ الدفعة المقدمة:', error);
+        alert('تعذر حفظ الدفعة المقدمة: ' + (error.message || error));
+      }
+    }
+
+    function populateJobOrderFields(car) {
+      const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+      
+      const serial = car.serialNo || car.serial || 'NON-JOB-' + (car.queueNo || '001');
+      const clientName = car.clientName || car.name || '--';
+      const phone = car.phone || car.clientPhone || '--';
+      const brand = car.brand || '--';
+      const model = car.model || '--';
+      const plate = car.plate || car.carPlate || '--';
+      const odo = (car.currentOdo || '--') + ' كم';
+      const complaint = car.receptionComplaint || car.complaint || 'فحص شامل للأعطال وصيانة';
+      const laborDesc = car.laborNotes || car.diagnosisDetails || 'فحص شامل وأعمال صيانة مركزية بالقسم المختص';
+      const laborCost = (car.laborCost || '0') + ' ج.م';
+      const advanceAmount = parseFloat(car.advancePayment) || 0;
+      const advancePay = advanceAmount.toLocaleString('en-US') + ' ج.م';
+      const advanceInput = document.getElementById('advancePaymentInput');
+      if (advanceInput) advanceInput.value = advanceAmount > 0 ? advanceAmount : '';
+      const todayStr = new Date().toLocaleDateString('ar-EG');
+
+      setVal('jobFooterSerial', serial);
+      setVal('jobClientName', clientName);
+      setVal('jobClientPhone', phone);
+      setVal('jobBrand', brand);
+      setVal('jobModel', model);
+      setVal('jobPlate', plate);
+      setVal('jobOdo', odo);
+      setVal('jobDate', todayStr);
+      setVal('jobSerialText', serial);
+      setVal('jobGeneralNotesDisplay', complaint);
+      setVal('jobLaborDescRow', laborDesc);
+      setVal('jobLaborCostRow', laborCost);
+      setVal('jobAdvancePayRow', advancePay);
+      setVal('jobExtraNotesLine', car.diagnosisDetails || '');
+
+      setVal('slipDate', todayStr);
+      setVal('slipClientName', clientName);
+      setVal('slipCarModel', `${brand} ${model}`);
+      setVal('slipPlate', plate);
+      setVal('slipQueue', car.queueNo || '-');
+      setVal('slipAdvancePay', advancePay);
+    }
+  </script>
+</body>
+</html>

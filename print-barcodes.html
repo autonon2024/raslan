@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AUTO NON - صانع وطباعة الباركود والتسلسل</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- مكتبة توليد الباركود JsBarcode -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --primary-orange: #ea580c;
+      --text-main: #0f172a;
+      --border-color: #e2e8f0;
+      --input-bg: #ffffff;
+      --btn-green: #10b981;
+      --btn-blue: #0284c7;
+      --border-red: #dc2626; /* لون الإطار الأحمر */
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    html, body { direction: rtl !important; text-align: right !important; background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-size: 0.9rem; }
+    
+    .header-top-bar {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;
+      background: var(--card-bg); padding: 10px 15px; border-radius: 12px; border: 1px solid var(--border-color); flex-wrap: wrap;
+    }
+    .brand-logo { display: flex; align-items: center; gap: 8px; font-size: 1.2rem; font-weight: 800; color: var(--primary-orange); letter-spacing: 1px; }
+    .btn-nav { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); padding: 7px 14px; border-radius: 20px; font-weight: bold; text-decoration: none; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; }
+
+    .main-grid { display: grid; grid-template-columns: 1fr 350px; gap: 14px; }
+    @media(max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .card-box { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); padding: 16px; margin-bottom: 14px; position: relative; }
+    .card-title { color: var(--primary-orange); font-size: 1.05rem; font-weight: 800; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+    .control-toolbar {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--card-bg);
+      padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 14px;
+    }
+    .btn-action { padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+    .btn-action:hover { border-color: var(--primary-orange); }
+    .btn-primary { background: var(--primary-orange); color: white; border: none; }
+    .btn-green { background: var(--btn-green); color: white; border: none; }
+
+    .form-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .form-field label { font-size: 0.82rem; font-weight: 700; }
+    .form-field input, .form-field select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); background: var(--input-bg);
+      border-radius: 6px; font-size: 0.88rem; font-weight: 600; color: var(--text-main); outline: none; text-align: right;
+    }
+
+    /* معاينات الباركود الشبكية مع إطار أحمر */
+    .barcode-sheet-preview {
+      background: #ffffff; color: #000000; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1;
+      max-height: 600px; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; justify-items: center;
+    }
+    .barcode-item-box {
+      border: 1px solid var(--border-red) !important; padding: 6px; text-align: center; background: #fff; width: 100%; border-radius: 6px; page-break-inside: avoid; break-inside: avoid;
+    }
+    .barcode-item-box svg { max-width: 100%; height: 38px; }
+    .barcode-text-val { font-size: 0.72rem; font-weight: bold; margin-top: 2px; }
+    .item-price-tag { font-size: 0.7rem; color: #ea580c; font-weight: 800; }
+    .link-info-tag { font-size: 0.62rem; color: #0284c7; font-weight: 700; margin-top: 1px; }
+
+    .items-list-sidebar { max-height: 350px; overflow-y: auto; }
+    .item-row { padding: 8px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; font-size: 0.85rem; }
+    .item-row:hover { background: rgba(234, 88, 12, 0.05); }
+
+    /* إعدادات الطباعة: إطار أحمر والبدء من أعلى الورقة تماماً لاستيعاب أقصى عدد */
+    @media print {
+      @page {
+        size: A4;
+        margin: 2mm 5mm;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #printableBarcodeArea, #printableBarcodeArea * {
+        visibility: visible;
+      }
+      #printableBarcodeArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-height: none !important;
+        overflow: visible !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6mm 4mm;
+        align-content: start;
+      }
+      .barcode-item-box {
+        border: 1px solid #dc2626 !important; /* إطار أحمر قوي عند الطباعة */
+        break-inside: avoid;
+        page-break-inside: avoid;
+        padding: 4px !important;
+      }
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <div class="header-top-bar no-print">
+    <div class="brand-logo">
+      <i class="fa-solid fa-barcode"></i>
+      <span>AUTO NON - صانع وطباعة الباركود والتسلسل</span>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      
+    </div>
+  </div>
+
+  <!-- شريط الأدوات -->
+  <div class="control-toolbar no-print">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <label style="font-weight:700; font-size:0.8rem;">بداية التسلسل:</label>
+      <input type="number" id="startSequenceNum" value="100" style="width: 75px; padding:6px; border:1px solid var(--border-color); border-radius:6px; text-align:center;" oninput="generateBarcodesPreview()">
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <label style="font-weight:700; font-size:0.8rem;">العدد المطلوب:</label>
+      <input type="number" id="barcodeCountQty" value="12" min="1" max="100" style="width: 60px; padding:6px; border:1px solid var(--border-color); border-radius:6px; text-align:center;" oninput="generateBarcodesPreview()">
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <label style="font-weight:700; font-size:0.8rem;">السعر:</label>
+      <input type="text" id="manualItemPrice" value="0" style="width: 70px; padding:6px; border:1px solid var(--border-color); border-radius:6px; text-align:center;" placeholder="السعر">
+    </div>
+    
+    <button class="btn-action btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة العدد المحدد A4</button>
+    <button class="btn-action btn-green" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة حراري</button>
+  </div>
+
+  <div class="main-grid">
+    <!-- قسم المعاينة والشبكة التسلسلية -->
+    <div class="card-box">
+      <div class="card-title">
+        <span><i class="fa-solid fa-table-cells"></i> معاينة الباركود (S/N + سنة + شهر + تسلسل)</span>
+        <span id="activePrefixLabel" style="font-size: 0.8rem; font-weight: bold; color: var(--primary-orange);"></span>
+      </div>
+      <div id="printableBarcodeArea" class="barcode-sheet-preview">
+        <!-- يتم توليد الأكواد حسب العدد المحدد تماماً -->
+      </div>
+    </div>
+
+    <!-- قسم اختيار الارتباط -->
+    <div class="no-print">
+      <div class="card-box">
+        <div class="card-title">
+          <span><i class="fa-solid fa-link"></i> ربط الباركود بـ:</span>
+        </div>
+        
+        <div class="form-field">
+          <label>نوع الارتباط الرئيسي:</label>
+          <select id="barcodeTargetType" onchange="toggleTargetSection()">
+            <option value="inventory">المخزن (قطع غيار وأصناف)</option>
+            <option value="car">السيارة (سيستم الاستقبال والتشخيص)</option>
+          </select>
+        </div>
+
+        <!-- تفريعات قسم السيارة (مسجلة أم غير مسجلة) -->
+        <div id="carSubOptionsContainer" style="display: none; margin-bottom: 8px;">
+          <div class="form-field">
+            <label>حالة السيارة:</label>
+            <select id="carStatusType" onchange="toggleCarSubSection()">
+              <option value="registered">سيارة مسجلة بالسيستم</option>
+              <option value="unregistered">سيارة غير مسجلة (طباعة مباشرة بدون بيانات)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- قسم اختيار المخزن -->
+        <div id="inventorySectionContainer">
+          <div class="form-field">
+            <input type="text" id="searchInventoryInput" placeholder="بحث في أصناف المخزن..." oninput="filterInventoryList()">
+          </div>
+          <div class="items-list-sidebar" id="inventoryItemsListContainer">
+            <small style="color:#64748b;">جاري تحميل الأصناف...</small>
+          </div>
+        </div>
+
+        <!-- قسم اختيار السيارة المسجلة -->
+        <div id="carRegisteredContainer" style="display: none;">
+          <div class="form-field">
+            <input type="text" id="carSearchInput" placeholder="بحث برقم لوحة السيارة أو العميل..." oninput="filterReceptionList()">
+          </div>
+          <div class="items-list-sidebar" id="receptionItemsListContainer">
+            <small style="color:#64748b;">جاري تحميل سيارات الاستقبال...</small>
+          </div>
+        </div>
+
+        <!-- قسم السيارة غير المسجلة -->
+        <div id="carUnregisteredContainer" style="display: none; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px dashed var(--border-color); text-align: center;">
+          <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 8px;">سيتم طباعة الباركود والسيريال بشكل مباشر بدون ربط ببيانات عميل، مع إمكانية التوجيه السريع:</p>
+          <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+            <a href="index.html" class="btn-action" style="font-size: 0.75rem;"><i class="fa-solid fa-house"></i> صفحة الاستقبال</a>
+            <a href="diagnosis.html" class="btn-action" style="font-size: 0.75rem;"><i class="fa-solid fa-stethoscope"></i> صفحة التشخيص</a>
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top: 12px;">
+          <label>العنصر المرتبط حالياً:</label>
+          <input type="text" id="linkedItemDisplayName" value="مخزن عام" readonly style="background: #f1f5f9; font-size: 0.8rem;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let inventoryItems = [];
+    let receptionItems = [];
+    let selectedLinkText = "مخزن عام";
+
+    // جلب أصناف المخزن
+    db.collection('inventory').onSnapshot(snapshot => {
+      inventoryItems = [];
+      snapshot.forEach(doc => {
+        inventoryItems.push({ id: doc.id, ...doc.data() });
+      });
+      if(document.getElementById('barcodeTargetType').value === 'inventory') {
+        renderInventorySidebar(inventoryItems);
+      }
+    });
+
+    // جلب سيارات الاستقبال والتشخيص
+    db.collection('reception').onSnapshot(snapshot => {
+      receptionItems = [];
+      snapshot.forEach(doc => {
+        receptionItems.push({ id: doc.id, ...doc.data() });
+      });
+      if(document.getElementById('barcodeTargetType').value === 'car' && document.getElementById('carStatusType').value === 'registered') {
+        renderReceptionSidebar(receptionItems);
+      }
+    });
+
+    function toggleTargetSection() {
+      const type = document.getElementById('barcodeTargetType').value;
+      const carSubOptions = document.getElementById('carSubOptionsContainer');
+      const invContainer = document.getElementById('inventorySectionContainer');
+      const carRegContainer = document.getElementById('carRegisteredContainer');
+      const carUnregContainer = document.getElementById('carUnregisteredContainer');
+
+      if (type === 'inventory') {
+        carSubOptions.style.display = 'none';
+        invContainer.style.display = 'block';
+        carRegContainer.style.display = 'none';
+        carUnregContainer.style.display = 'none';
+        selectedLinkText = "مخزن عام";
+        document.getElementById('linkedItemDisplayName').value = selectedLinkText;
+        renderInventorySidebar(inventoryItems);
+      } else {
+        carSubOptions.style.display = 'block';
+        invContainer.style.display = 'none';
+        toggleCarSubSection();
+      }
+      generateBarcodesPreview();
+    }
+
+    function toggleCarSubSection() {
+      const statusType = document.getElementById('carStatusType').value;
+      const carRegContainer = document.getElementById('carRegisteredContainer');
+      const carUnregContainer = document.getElementById('carUnregisteredContainer');
+
+      if (statusType === 'registered') {
+        carRegContainer.style.display = 'block';
+        carUnregContainer.style.display = 'none';
+        renderReceptionSidebar(receptionItems);
+      } else {
+        carRegContainer.style.display = 'none';
+        carUnregContainer.style.display = 'block';
+        selectedLinkText = "مركز أوتو نون لصيانة السيارات يرحب بكم";
+        document.getElementById('linkedItemDisplayName').value = selectedLinkText;
+        generateBarcodesPreview();
+      }
+    }
+
+    function renderInventorySidebar(items) {
+      const container = document.getElementById('inventoryItemsListContainer');
+      container.innerHTML = '';
+      if (items.length === 0) {
+        container.innerHTML = `<small style="color:#64748b; display:block; text-align:center; padding:10px;">لا توجد أصناف في المخزن.</small>`;
+        return;
+      }
+      items.forEach(item => {
+        container.innerHTML += `
+          <div class="item-row" onclick="selectLinkedItem('${item.price || 0}', 'مخزن: ${item.name}')">
+            <div style="font-weight:800; color:var(--text-main);">${item.name}</div>
+            <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">السعر: ${item.price || 0} ج.م</div>
+          </div>
+        `;
+      });
+    }
+
+    function renderReceptionSidebar(items) {
+      const container = document.getElementById('receptionItemsListContainer');
+      container.innerHTML = '';
+      if (items.length === 0) {
+        container.innerHTML = `<small style="color:#64748b; display:block; text-align:center; padding:10px;">لا توجد سيارات مسجلة.</small>`;
+        return;
+      }
+      items.forEach(item => {
+        const carDesc = `سيارة: ${item.carNumber || 'بدون لوحة'} (${item.clientName || 'عميل'})`;
+        container.innerHTML += `
+          <div class="item-row" onclick="selectLinkedItem('0', '${carDesc}')">
+            <div style="font-weight:800; color:var(--text-main);">🚗 ${item.carNumber || 'بدون لوحة'} - ${item.clientName || 'عميل'}</div>
+            <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">الحالة: ${item.status || 'استقبال'}</div>
+          </div>
+        `;
+      });
+    }
+
+    function filterInventoryList() {
+      const query = document.getElementById('searchInventoryInput').value.toLowerCase();
+      const filtered = inventoryItems.filter(i => i.name.toLowerCase().includes(query));
+      renderInventorySidebar(filtered);
+    }
+
+    function filterReceptionList() {
+      const query = document.getElementById('carSearchInput').value.toLowerCase();
+      const filtered = receptionItems.filter(i => (i.carNumber && i.carNumber.toLowerCase().includes(query)) || (i.clientName && i.clientName.toLowerCase().includes(query)));
+      renderReceptionSidebar(filtered);
+    }
+
+    function selectLinkedItem(price, linkText) {
+      if(price > 0) document.getElementById('manualItemPrice').value = price;
+      document.getElementById('linkedItemDisplayName').value = linkText;
+      selectedLinkText = linkText;
+      generateBarcodesPreview();
+    }
+
+    function generateBarcodesPreview() {
+      const container = document.getElementById('printableBarcodeArea');
+      const count = parseInt(document.getElementById('barcodeCountQty').value) || 12;
+      const startNumInput = parseInt(document.getElementById('startSequenceNum').value) || 100;
+      const price = document.getElementById('manualItemPrice').value;
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      
+      const datePrefix = `${year}${month}`;
+      document.getElementById('activePrefixLabel').innerText = `البادئة: S/N-${datePrefix}xx`;
+
+      container.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const serialNumberValue = `S/N-${datePrefix}${startNumInput + i}`;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'barcode-item-box';
+        itemDiv.innerHTML = `
+          <div style="font-size:0.7rem; font-weight:bold; margin-bottom:2px;">AUTO NON</div>
+          <svg id="barcode-em-${i}"></svg>
+          <div class="barcode-text-val">${serialNumberValue}</div>
+          <div class="link-info-tag">${selectedLinkText}</div>
+          ${price > 0 ? `<div class="item-price-tag">السعر: ${price} ج.م</div>` : ''}
+        `;
+        container.appendChild(itemDiv);
+
+        try {
+          JsBarcode(`#barcode-em-${i}`, serialNumberValue, {
+            format: "CODE128",
+            width: 1.4,
+            height: 32,
+            displayValue: false
+          });
+        } catch (e) { console.error(e); }
+      }
+    }
+
+    window.onload = function() {
+      generateBarcodesPreview();
+    };
+  </script>
+</body>
+</html>

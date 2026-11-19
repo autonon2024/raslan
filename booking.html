@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حجز مواعيد - Auto Non</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--navy:#0f172a;--orange:#f59e0b;--bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#dbe3ee;--green:#059669;--red:#dc2626}
+*{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}body{margin:0;background:var(--bg);color:var(--text);padding:18px}
+.wrap{max-width:1100px;margin:auto}.head{background:var(--navy);color:#fff;border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}.head h1{font-size:22px;margin:0 0 6px}.head p{margin:0;color:#cbd5e1;font-size:13px}.head a{color:#fff;text-decoration:none;background:#334155;padding:10px 14px;border-radius:9px;font-weight:bold}
+.grid{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 5px 18px #0f172a0a}.card h2{font-size:18px;margin:0 0 16px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{margin-bottom:12px}.field.full{grid-column:1/-1}label{display:block;font-size:13px;font-weight:bold;margin-bottom:6px}input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#0f172a;font-size:14px;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px #2563eb18}textarea{min-height:76px;resize:vertical}.btn{border:0;border-radius:9px;padding:11px 14px;font-weight:bold;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.primary{background:var(--orange);color:#111827}.secondary{background:#e2e8f0;color:#0f172a}.success{background:var(--green);color:white}.danger{background:#fee2e2;color:#991b1b}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.hint{font-size:12px;color:var(--muted);line-height:1.7;margin:12px 0 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:680px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;vertical-align:middle}th{background:#f8fafc;color:#475569;white-space:nowrap}.status{display:inline-block;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:bold}.pending{background:#fef3c7;color:#92400e}.confirmed{background:#d1fae5;color:#065f46}.cancelled{background:#fee2e2;color:#991b1b}.small{font-size:11px;color:var(--muted)}.empty{text-align:center;padding:28px;color:var(--muted)}#notice{display:none;padding:11px;border-radius:9px;margin-bottom:12px;font-size:13px;line-height:1.6}#notice.ok{display:block;background:#dcfce7;color:#166534}#notice.err{display:block;background:#fee2e2;color:#991b1b}
+@media(max-width:850px){.grid{grid-template-columns:1fr}}@media(max-width:520px){body{padding:9px}.card{padding:14px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.head{padding:16px}.head h1{font-size:19px}.actions .btn{flex:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head"><div><h1><i class="fa-solid fa-calendar-check" style="color:#fbbf24"></i> حجز مواعيد مركز أوتو نون (NON)</h1><p>تسجيل مواعيد العملاء وتأكيدها لإضافتها تلقائياً إلى قائمة انتظار الاستقبال</p></div><a href="estkbal.html"><i class="fa-solid fa-arrow-right"></i> الرجوع للاستقبال</a></header>
+  <div class="grid">
+    <section class="card">
+      <h2><i class="fa-solid fa-calendar-plus"></i> تسجيل حجز جديد</h2>
+      <div id="notice"></div>
+      <form id="appointmentForm">
+        <div class="field"><label for="clientName">اسم العميل *</label><input id="clientName" required placeholder="اسم العميل بالكامل"></div>
+        <div class="form-grid">
+          <div class="field"><label for="phone">رقم الهاتف / واتساب *</label><input id="phone" required inputmode="tel" placeholder="01xxxxxxxxx"></div>
+          <div class="field"><label for="plate">رقم اللوحة</label><input id="plate" placeholder="مثال: س ص ع - 1234"></div>
+          <div class="field"><label for="brand">ماركة السيارة</label><input id="brand" placeholder="مثال: هيونداي"></div>
+          <div class="field"><label for="model">الموديل</label><input id="model" placeholder="مثال: إلنترا"></div>
+          <div class="field"><label for="color">اللون</label><input id="color" placeholder="لون السيارة"></div>
+          <div class="field"><label for="year">سنة الصنع</label><input id="year" type="number" min="1980" max="2035" placeholder="2022"></div>
+          <div class="field"><label for="appointmentDate">تاريخ الموعد *</label><input id="appointmentDate" type="date" required></div>
+          <div class="field"><label for="appointmentTime">وقت الموعد *</label><input id="appointmentTime" type="time" required></div>
+          <div class="field"><label for="department">القسم / نوع الخدمة</label><select id="department"><option value="صيانة عامة">صيانة عامة</option><option>ميكانيكا</option><option>كهرباء</option><option>عفشة وفرامل</option><option>زيوت وفلاتر</option><option>تكييف</option><option>سمكرة ودهان</option><option>فحص سيارة</option><option>أخرى</option></select></div>
+          <div class="field"><label for="chassis">رقم الشاسيه</label><input id="chassis" placeholder="اختياري"></div>
+          <div class="field full"><label for="complaint">شكوى العميل / تفاصيل الخدمة</label><textarea id="complaint" placeholder="اكتب العطل أو الخدمة المطلوبة..."></textarea></div>
+          <div class="field full"><label for="notes">ملاحظات إضافية</label><textarea id="notes" placeholder="أي ملاحظات خاصة بالموعد..."></textarea></div>
+        </div>
+        <div class="actions"><button class="btn primary" type="button" onclick="saveAppointment('confirmed')"><i class="fa-solid fa-circle-check"></i> تأكيد الحجز وإضافته للاستقبال</button><button class="btn secondary" type="button" onclick="saveAppointment('pending')"><i class="fa-regular fa-floppy-disk"></i> حفظ كحجز مبدئي</button></div>
+        <p class="hint">عند اختيار «تأكيد الحجز» يتم إنشاء سجل السيارة تلقائياً في مجموعة <b>cars</b> داخل Firebase، ويظهر فوراً في قائمة انتظار الاستقبال مع تاريخ ووقت الموعد. الحجز المبدئي لا يدخل قائمة الانتظار إلا بعد تأكيده.</p>
+      </form>
+    </section>
+    <section class="card">
+      <h2><i class="fa-solid fa-list-check"></i> سجل الحجوزات</h2>
+      <div class="table-wrap"><table><thead><tr><th>العميل والسيارة</th><th>الموعد</th><th>الخدمة</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody id="appointmentsTable"><tr><td colspan="5" class="empty">جار تحميل الحجوزات...</td></tr></tbody></table></div>
+      <p class="hint">الحجوزات المؤكدة تكون مضافة بالفعل إلى قائمة الانتظار. يمكنك تأكيد أي حجز مبدئي من هنا.</p>
+    </section>
+  </div>
+</div>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  databaseURL: "https://autononraslan-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+const $=id=>document.getElementById(id);
+const today=new Date();
+$('appointmentDate').min=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+$('appointmentDate').value=$('appointmentDate').min;
+$('appointmentTime').value='10:00';
+let appointmentsCache=[];
+function showNotice(message,type='ok'){const n=$('notice');n.className=type;n.textContent=message;n.style.display='block';window.scrollTo({top:0,behavior:'smooth'});}
+function dateLabel(iso){const d=new Date(iso+'T12:00:00');return d.toLocaleDateString('ar-EG');}
+function timeLabel(hhmm){const [h,m]=hhmm.split(':').map(Number);const d=new Date();d.setHours(h,m,0,0);return d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});}
+function getFormData(){return {name:$('clientName').value.trim(),phone:$('phone').value.trim(),plate:$('plate').value.trim()||'غير مدخل',brand:$('brand').value.trim(),model:$('model').value.trim(),color:$('color').value.trim(),year:$('year').value.trim(),chassis:$('chassis').value.trim()||'غير مدخل',appointmentDate:$('appointmentDate').value,appointmentTime:$('appointmentTime').value,department:$('department').value,complaint:$('complaint').value.trim(),notes:$('notes').value.trim()};}
+async function saveAppointment(status){
+  const data=getFormData();
+  if(!data.name||!data.phone||!data.appointmentDate||!data.appointmentTime){showNotice('يرجى إدخال اسم العميل ورقم الهاتف وتاريخ ووقت الموعد.','err');return;}
+  if(data.appointmentDate<$('appointmentDate').min){showNotice('لا يمكن اختيار تاريخ سابق.','err');return;}
+  try{
+    const appointmentRef=db.collection('appointments').doc();
+    const createdAt=Date.now();
+    const payload={...data,status,createdAt,updatedAt:createdAt,appointmentDateLabel:dateLabel(data.appointmentDate),appointmentTimeLabel:timeLabel(data.appointmentTime),receptionCarId:null};
+    if(status==='confirmed') await addToReception(appointmentRef,payload);
+    else await appointmentRef.set(payload);
+    $('appointmentForm').reset();$('appointmentDate').min=$('appointmentDate').min;$('appointmentDate').value=$('appointmentDate').min;$('appointmentTime').value='10:00';
+    showNotice(status==='confirmed'?'تم تأكيد الحجز وإضافته تلقائياً إلى قائمة انتظار الاستقبال بنجاح.':'تم حفظ الحجز كحجز مبدئي. لن يظهر في قائمة الانتظار إلا بعد تأكيده.');
+  }catch(error){console.error(error);showNotice('تعذر حفظ الحجز: '+(error.message||error),'err');}
+}
+async function addToReception(appointmentRef,appointment){
+  const carId='CAR-APT-'+appointmentRef.id;
+  const carRef=db.collection('cars').doc(carId);
+  const existing=await carRef.get();
+  if(existing.exists){await appointmentRef.set({status:'confirmed',receptionCarId:carId,updatedAt:Date.now()},{merge:true});return;}
+  const dateText=appointment.appointmentDateLabel||dateLabel(appointment.appointmentDate);
+  const carsSnapshot=await db.collection('cars').where('date','==',dateText).get();
+  const activeCount=carsSnapshot.docs.filter(doc=>(doc.data().clientStatus||'ON')!=='OFF').length;
+  const scheduledAt=new Date(appointment.appointmentDate+'T'+appointment.appointmentTime+':00').getTime();
+  const batch=db.batch();
+  batch.set(carRef,{docId:carId,queueNo:activeCount+1,name:appointment.name,phone:appointment.phone,origin:'',brand:appointment.brand||'',model:appointment.model||'',color:appointment.color||'غير محدد',year:appointment.year||'',engine:'',plate:appointment.plate||'غير مدخل',gov:'عام',chassis:appointment.chassis||'غير مدخل',serialNo:'',issue:appointment.complaint||appointment.department||'حجز موعد',receptionComplaint:appointment.complaint||appointment.department||'حجز موعد',clientStatus:'ON',date:dateText,time:appointment.appointmentTimeLabel||timeLabel(appointment.appointmentTime),createdAt:scheduledAt,appointmentId:appointmentRef.id,appointmentDate:appointment.appointmentDate,appointmentDateLabel:dateText,appointmentTime:appointment.appointmentTimeLabel||timeLabel(appointment.appointmentTime),appointmentTimeValue:appointment.appointmentTime,appointmentDepartment:appointment.department||'صيانة عامة',appointmentNotes:appointment.notes||'',source:'appointment',createdFromAppointmentAt:Date.now()});
+  batch.set(appointmentRef,{...appointment,status:'confirmed',receptionCarId:carId,confirmedAt:Date.now(),updatedAt:Date.now()},{merge:true});
+  await batch.commit();
+}
+async function confirmAppointment(id){
+  const ref=db.collection('appointments').doc(id);
+  try{const snap=await ref.get();if(!snap.exists){showNotice('الحجز غير موجود.','err');return;}const a=snap.data();if(a.status==='confirmed'&&a.receptionCarId){showNotice('هذا الحجز مؤكد ومضاف بالفعل إلى قائمة الاستقبال.');return;}await addToReception(ref,a);showNotice('تم تأكيد الحجز وإضافته إلى قائمة انتظار الاستقبال.');}
+  catch(error){console.error(error);showNotice('تعذر تأكيد الحجز: '+(error.message||error),'err');}
+}
+async function cancelAppointment(id){if(!confirm('هل تريد إلغاء هذا الحجز؟ إذا كان قد دخل قائمة الانتظار فسيتم سحبه منها أيضاً.'))return;try{const ref=db.collection('appointments').doc(id);const snap=await ref.get();const batch=db.batch();if(snap.exists){const a=snap.data();if(a.receptionCarId){const carRef=db.collection('cars').doc(a.receptionCarId);const carSnap=await carRef.get();if(carSnap.exists&&carSnap.data().appointmentId===id)batch.delete(carRef);}batch.update(ref,{status:'cancelled',updatedAt:Date.now()});}await batch.commit();showNotice('تم إلغاء الحجز وسحبه من قائمة الانتظار إن كان مؤكداً.');}catch(e){showNotice('تعذر إلغاء الحجز: '+e.message,'err');}}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderAppointments(){const body=$('appointmentsTable');if(!appointmentsCache.length){body.innerHTML='<tr><td colspan="5" class="empty">لا توجد حجوزات مسجلة حتى الآن.</td></tr>';return;}body.innerHTML=appointmentsCache.map(a=>{const status=a.status||'pending';const label=status==='confirmed'?'مؤكد':status==='cancelled'?'ملغي':'مبدئي';const cls=status==='confirmed'?'confirmed':status==='cancelled'?'cancelled':'pending';const car=[a.brand,a.model].filter(Boolean).join(' ');return `<tr><td><b>${escapeHtml(a.name)}</b><br><span class="small">${escapeHtml(a.phone)} · ${escapeHtml(car||a.plate||'')}</span></td><td><b>${escapeHtml(a.appointmentDateLabel||dateLabel(a.appointmentDate))}</b><br><span class="small">${escapeHtml(a.appointmentTimeLabel||a.appointmentTime||'')}</span></td><td>${escapeHtml(a.department||'صيانة عامة')}</td><td><span class="status ${cls}">${label}</span></td><td>${status==='pending'?`<button class="btn success" onclick="confirmAppointment('${a.id}')">تأكيد وإضافة</button>`:status==='confirmed'?'<span class="small">مضاف للاستقبال</span>':`<span class="small">—</span>`}${status!=='cancelled'?` <button class="btn danger" onclick="cancelAppointment('${a.id}')" title="إلغاء الحجز"><i class="fa-solid fa-xmark"></i></button>`:''}</td></tr>`;}).join('');}
+db.collection('appointments').orderBy('createdAt','desc').limit(100).onSnapshot(snapshot=>{appointmentsCache=snapshot.docs.map(d=>({id:d.id,...d.data()}));renderAppointments();},error=>{console.error(error);$('appointmentsTable').innerHTML='<tr><td colspan="5" class="empty">تعذر تحميل الحجوزات. تحقق من اتصال Firebase والصلاحيات.</td></tr>';});
+</script>
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سجل العملاء والأرشيف الشامل - مركز أوتو نون</title>
+  <!-- مكتبات التصميم و Firebase -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDKs (Compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f4f7f6;
+      --container-bg: #fff;
+      --text-color: #333;
+      --header-text: #2c3e50;
+      --table-th-bg: #f8f9fa;
+      --table-hover: #f9f9f9;
+      --border-color: #eee;
+      --input-bg: #fff;
+      --input-border: #ddd;
+      --card-bg: #f8f9fa;
+      --card-border: #e9ecef;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #121212;
+      --container-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --header-text: #ffffff;
+      --table-th-bg: #2c2c2c;
+      --table-hover: #2a2a2a;
+      --border-color: #333;
+      --input-bg: #2d2d2d;
+      --input-border: #444;
+      --card-bg: #2a2a2a;
+      --card-border: #383838;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Cairo', sans-serif;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--container-bg);
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    header h1 {
+      color: var(--header-text);
+      font-size: 22px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn-custom {
+      background: #34495e;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+      transition: background 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-custom:hover {
+      background: #2c3e50;
+    }
+    .theme-toggle-btn {
+      background: #e67e22;
+    }
+    .theme-toggle-btn:hover {
+      background: #d35400;
+    }
+    .print-btn {
+      background: #2980b9;
+    }
+    .print-btn:hover {
+      background: #2471a3;
+    }
+
+    .filters {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filters input {
+      flex: 1;
+      min-width: 250px;
+      padding: 10px 15px;
+      border: 1px solid var(--input-border);
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      min-width: 700px;
+    }
+    table th, table td {
+      padding: 12px 15px;
+      text-align: right;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+    table th {
+      background-color: var(--table-th-bg);
+      color: var(--header-text);
+      font-weight: 700;
+    }
+    table tr:hover {
+      background-color: var(--table-hover);
+    }
+    .no-data {
+      text-align: center;
+      padding: 30px;
+      color: #777;
+      font-size: 16px;
+    }
+    .badge {
+      background: #e1f5fe;
+      color: #0288d1;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    [data-theme="dark"] .badge {
+      background: #01579b;
+      color: #b3e5fc;
+    }
+    .action-btn {
+      background: #00897b;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.3s;
+    }
+    .action-btn:hover {
+      background: #00695c;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: var(--container-bg);
+      color: var(--text-color);
+      margin: 5% auto;
+      padding: 25px;
+      border-radius: 10px;
+      width: 85%;
+      max-width: 800px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    .close-modal {
+      color: #aaa;
+      float: left;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-modal:hover {
+      color: #000;
+    }
+    .modal-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .modal-body {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .visit-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 12px 15px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .visit-card p {
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    /* تنسيق خاص عند الطباعة */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #clientModal, #clientModal * {
+        visibility: visible;
+      }
+      #clientModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        background: white !important;
+        color: black !important;
+      }
+      .modal-content {
+        box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 10px;
+      }
+      .close-modal, .print-hide {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+
+  <div class="container">
+    <header>
+      <h1><i class="fa-solid fa-users-gear"></i> سجل العملاء والأرشيف الشامل - مركز أوتو نون</h1>
+      <div class="header-actions">
+        <button class="btn-custom theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">
+          <i class="fa-solid fa-moon"></i> الوضع الليلي
+        </button>
+        <a href="index.html" class="btn-custom"><i class="fa-solid fa-arrow-right"></i> العودة للاستقبال</a>
+      </div>
+    </header>
+
+    <div class="filters">
+      <input type="text" id="searchInput" placeholder="بحث باسم العميل أو رقم الهاتف..." onkeyup="filterClients()">
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>اسم العميل</th>
+            <th>رقم الهاتف</th>
+            <th>عدد الزيارات</th>
+            <th>إجمالي المدفوعات</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="clientsTableBody">
+          <tr>
+            <td colspan="6" class="no-data">جاري تحميل البيانات...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal تفاصيل وعروض سجل العميل -->
+  <div id="clientModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeClientModal()">&times;</span>
+      <div class="modal-header">
+        <h2 id="modalClientName">سجل العميل</h2>
+        <p id="modalClientPhone" style="font-size: 14px; margin-top: 5px;"></p>
+        <div style="margin-top: 10px;" class="print-hide">
+          <button class="btn-custom print-btn" onclick="printClientReport()">
+            <i class="fa-solid fa-print"></i> طباعة سجل العميل
+          </button>
+        </div>
+      </div>
+      <div class="modal-body" id="modalVisitsList">
+        <!-- يتم تعبئة زيارات العميل هنا ديناميكياً -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // إعدادات اتصال فايربيس المطابقة للمشروع الجديد auto-non-b841f[cite: 3]
+    const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  databaseURL: "https://autononraslan-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    let clientsMap = {}; // تجميع العملاء بناءً على رقم الهاتف أو الاسم
+
+    // تبديل الوضع الليلي والنهاري
+    function toggleTheme() {
+      const body = document.body;
+      const themeBtn = document.getElementById('themeToggleBtn');
+      if (body.getAttribute('data-theme') === 'light') {
+        body.setAttribute('data-theme', 'dark');
+        themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i> الوضع النهاري';
+        localStorage.setItem('auto_non_theme', 'dark');
+      } else {
+        body.setAttribute('data-theme', 'light');
+        themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i> الوضع الليلي';
+        localStorage.setItem('auto_non_theme', 'light');
+      }
+    }
+
+    // استرجاع الثيم المحفوظ عند التحميل
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('auto_non_theme') || 'light';
+      document.body.setAttribute('data-theme', savedTheme);
+      const themeBtn = document.getElementById('themeToggleBtn');
+      if (savedTheme === 'dark') {
+        themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i> الوضع النهاري';
+      }
+    });
+
+    async function loadArchiveData() {
+      try {
+        const snapshot = await db.collection('workshop_archive').get();
+        clientsMap = {};
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const phoneKey = (data.clientPhone || data.phone || 'unknown').trim();
+          const nameKey = (data.clientName || 'عميل غير معروف').trim();
+          const plateKey = String(data.carPlate || data.plate || data.licensePlate || '').toUpperCase().replace(/[\s\-_.\/\\]+/g,'').replace(/[أإآ]/g,'ا').trim();
+          // ملف موحد لكل سيارة برقم اللوحة.
+          const clientKey = plateKey ? `car:${plateKey}` : (phoneKey !== '---' && phoneKey !== '' && phoneKey !== 'unknown' ? `phone:${phoneKey}` : `name:${nameKey}`);
+
+          if (!clientsMap[clientKey]) {
+            clientsMap[clientKey] = {
+              clientName: nameKey,
+              clientPhone: phoneKey,
+              visitsCount: 0,
+              totalPaid: 0,
+              visits: []
+            };
+          }
+
+          const paid = parseFloat(data.paymentAmount ?? data.paidAmount) || 0;
+          const visitId = String(data.invoiceSerial || data.archiveInvoiceId || doc.id);
+          // تجاهل نسخة الفاتورة إذا كانت مسجلة بالفعل في ملف العميل.
+          if (!clientsMap[clientKey].visits.some(visit => visit.visitId === visitId)) {
+            clientsMap[clientKey].visits.push({
+              visitId,
+              carDetails: data.carDetails || data.carInfo || '---',
+              carPlate: data.carPlate || data.plate || data.licensePlate || '---',
+              paymentAmount: paid,
+              notes: data.notes || '---',
+              date: data.archiveDateTag || data.dateFormatted || data.createdAt || '---'
+            });
+            clientsMap[clientKey].visitsCount += 1;
+            clientsMap[clientKey].totalPaid += paid;
+          }
+        });
+
+        renderClientsTable();
+      } catch (error) {
+        console.error("خطأ في جلب الأرشيف: ", error);
+        document.getElementById('clientsTableBody').innerHTML = `<tr><td colspan="6" class="no-data" style="color: red;">❌ حدث خطأ أثناء تحميل البيانات. تأكد من اتصال الإنترنت وقواعد الإذن.</td></tr>`;
+      }
+    }
+
+    function renderClientsTable(filterQuery = '') {
+      const tbody = document.getElementById('clientsTableBody');
+      tbody.innerHTML = '';
+
+      const clientKeys = Object.keys(clientsMap);
+      
+      const filteredKeys = clientKeys.filter(key => {
+        const client = clientsMap[key];
+        const name = client.clientName.toLowerCase();
+        const phone = client.clientPhone.toLowerCase();
+        return name.includes(filterQuery) || phone.includes(filterQuery);
+      });
+
+      if (filteredKeys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="no-data">لا توجد سجلات مطابقة حالياً.</td></tr>`;
+        return;
+      }
+
+      filteredKeys.forEach((key, index) => {
+        const client = clientsMap[key];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td><strong>${client.clientName}</strong></td>
+          <td>${client.clientPhone}</td>
+          <td><span class="badge">${client.visitsCount} زيارة</span></td>
+          <td><strong>${client.totalPaid} ج.م</strong></td>
+          <td>
+            <button class="action-btn" onclick="openClientModal('${key}')">
+              <i class="fa-solid fa-address-book"></i> سجل العميل
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterClients() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      renderClientsTable(query);
+    }
+
+    function openClientModal(clientKey) {
+      const client = clientsMap[clientKey];
+      if (!client) return;
+
+      document.getElementById('modalClientName').innerText = `سجل العميل: ${client.clientName}`;
+      document.getElementById('modalClientPhone').innerText = `رقم الهاتف: ${client.clientPhone} | إجمالي المدفوعات: ${client.totalPaid} ج.م`;
+
+      const visitsListDiv = document.getElementById('modalVisitsList');
+      visitsListDiv.innerHTML = '';
+
+      client.visits.forEach((visit, idx) => {
+        const visitCard = document.createElement('div');
+        visitCard.className = 'visit-card';
+        visitCard.innerHTML = `
+          <p><strong>الزيارة رقم (${idx + 1}) - التاريخ:</strong> ${visit.date}</p>
+          <p><strong>تفاصيل السيارة:</strong> ${visit.carDetails}</p>
+          <p><strong>رقم السيارة:</strong> ${visit.carPlate || "---"}</p>
+          <p><strong>المبلغ المدفوع:</strong> <span class="badge">${visit.paymentAmount} ج.م</span></p>
+          <p><strong>ملاحظات الأرشيف/التشخيص:</strong> ${visit.notes}</p>
+        `;
+        visitsListDiv.appendChild(visitCard);
+      });
+
+      document.getElementById('clientModal').style.display = 'block';
+    }
+
+    function closeClientModal() {
+      document.getElementById('clientModal').style.display = 'none';
+    }
+
+    // وظيفة طباعة سجل العميل فقط
+    function printClientReport() {
+      window.print();
+    }
+
+    // إغلاق نافذة الـ Modal عند النقر خارجها
+    window.onclick = function(event) {
+      const modal = document.getElementById('clientModal');
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // تحميل البيانات عند فتح الصفحة
+    window.onload = loadArchiveData;
+  </script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مركز أوتو نون - استعلام عن حالة صيانة السيارة</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #e0f2fe;
+      --text-color: #0f172a;
+      --card-bg: #ffffff;
+      --card-border: #bae6fd;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --header-bg: #ffffff;
+      --subtext: #334155;
+    }
+
+    [data-theme="light"] {
+      --bg-color: #ffffff;
+      --text-color: #0f172a;
+      --card-bg: #f8fafc;
+      --card-border: #cbd5e1;
+      --accent: #ea580c;
+      --accent-hover: #c2410c;
+      --header-bg: #f8fafc;
+      --subtext: #475569;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      font-weight: 700; 
+      transition: background 0.3s, color 0.3s; 
+    }
+    
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .header-box {
+      background: var(--header-bg);
+      padding: 25px;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 25px;
+      border: 4px solid var(--accent);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      position: relative;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .brand img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 14px;
+      padding: 5px;
+      border: 3px solid var(--accent);
+    }
+
+    .brand-text h1 {
+      font-size: 2rem;
+      font-weight: 900;
+    }
+
+    .brand-text small {
+      font-size: 1.05rem;
+      color: var(--subtext);
+    }
+
+    .search-card {
+      background: var(--card-bg);
+      border: 4px solid var(--accent);
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      text-align: right;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+      color: var(--text-color);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 14px 18px;
+      border: 3px solid var(--card-border);
+      border-radius: 12px;
+      font-size: 1.1rem;
+      background: var(--bg-color);
+      color: var(--text-color);
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-search {
+      background: var(--accent);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn-search:hover {
+      background: var(--accent-hover);
+    }
+
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .result-card {
+      background: var(--card-bg);
+      border: 5px solid var(--card-border);
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      position: relative;
+    }
+
+    .result-card.paused {
+      border: 5px dashed #f59e0b;
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 3px solid var(--card-border);
+      padding-bottom: 12px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .car-title {
+      font-size: 1.4rem;
+      font-weight: 900;
+    }
+
+    .plate-badge {
+      background: var(--accent);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+
+    .plate-badge.paused {
+      background: #f59e0b;
+      color: #0f172a;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      font-size: 1.05rem;
+      color: var(--subtext);
+      line-height: 1.8;
+    }
+
+    .info-grid strong {
+      color: var(--text-color);
+    }
+
+    .status-box {
+      margin-top: 15px;
+      background: rgba(2, 132, 199, 0.1);
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      border: 2px solid var(--card-border);
+    }
+
+    .status-box span {
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .msg-box {
+      text-align: center;
+      padding: 30px;
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 3px dashed var(--card-border);
+      font-size: 1.2rem;
+      color: var(--subtext);
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body data-theme="sky">
+
+  <div class="container">
+    <div class="header-box">
+      <div class="brand">
+        <img src="NON.jpeg" alt="شعار المركز" onerror="this.onerror=null; this.src='NON.jpg';">
+        <div class="brand-text">
+          <h1>مركز أوتو نون</h1>
+          <small>بوابة الاستعلام عن حالة صيانة السيارات</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-card">
+      <div class="form-group">
+        <label><i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i> ابحث برقم اللوحة، اسم العميل، أو السيريال نمبر:</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="اكتب هنا للبحث...">
+      </div>
+      <button class="btn-search" onclick="searchCar()">
+        <i class="fa-solid fa-search"></i> استعلام عن السيارة
+      </button>
+    </div>
+
+    <div class="results-container" id="resultsContainer">
+      <div class="msg-box">
+        <i class="fa-solid fa-car fa-2x" style="color:var(--accent); margin-bottom:10px;"></i>
+        <p>قم بإدخال بيانات البحث بالأعلى لعرض تفاصيل حالة صيانة سيارتك.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBvMJ8LUHnKZE7I_JbkT6o0E8yZ5PnT_hk",
+  authDomain: "autononraslan.firebaseapp.com",
+  projectId: "autononraslan",
+  storageBucket: "autononraslan.firebasestorage.app",
+  messagingSenderId: "631025252766",
+  appId: "1:631025252766:web:e259f4dc44740cfffa7e8f",
+  measurementId: "G-RWBS9JJVZZ"
+};
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function searchCar() {
+      const queryText = document.getElementById('searchInput').value.trim().toLowerCase();
+      const container = document.getElementById('resultsContainer');
+
+      if (!queryText) {
+        alert("يرجى إدخال كلمة البحث (رقم اللوحة، اسم العميل، أو السيريال نمبر)");
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="msg-box">
+          <i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--accent); margin-bottom:10px;"></i>
+          <p>جاري البحث في قاعدة البيانات...</p>
+        </div>
+      `;
+
+      try {
+        const snapshot = await db.collection('cars').get();
+        let foundCars = [];
+
+        snapshot.forEach(doc => {
+          const car = doc.data();
+          const clientName = (car.name || car.clientName || '').toLowerCase();
+          const carPlate = (car.plate || car.carPlate || '').toLowerCase();
+          const serialNo = (car.serialNo || car.serialNumber || '').toLowerCase();
+
+          if (clientName.includes(queryText) || carPlate.includes(queryText) || serialNo.includes(queryText)) {
+            foundCars.push(car);
+          }
+        });
+
+        if (foundCars.length === 0) {
+          container.innerHTML = `
+            <div class="msg-box">
+              <i class="fa-solid fa-circle-exclamation fa-2x" style="color:#dc2626; margin-bottom:10px;"></i>
+              <p>عذراً، لم يتم العثور على أي سيارة تطابق بيانات البحث المدخلة.</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = '';
+        foundCars.forEach(car => {
+          let clientName = car.name || car.clientName || 'غير مسجل';
+          let carPlate = car.plate || car.carPlate || 'بدون لوحة';
+          let carInfo = `${car.brand || ''} ${car.model || ''}`.trim() || 'سيارة صيانة';
+          let serialNumber = car.serialNo || car.serialNumber || 'غير متوفر';
+          let workshopName = car.workshop || car.serviceType || 'ورشة الصيانة العامة';
+          let sectionName = car.mechanicSubCategory || car.targetDepartment || car.section || 'القسم الفني العام';
+
+          let isPaused = car.status === 'PENDING_APPROVAL' || car.status === 'WAITING_FOR_PARTS' || car.isPaused === true || car.status === 'paused';
+
+          let cardClass = isPaused ? 'result-card paused' : 'result-card';
+          let plateClass = isPaused ? 'plate-badge paused' : 'plate-badge';
+          let statusText = isPaused ? 'معلقة (بانتظار موافقة أو قطع غيار) ⏸️' : `${sectionName} 🛠️`;
+
+          container.innerHTML += `
+            <div class="${cardClass}">
+              <div class="result-header">
+                <div class="car-title"><i class="fa-solid fa-car-side" style="color:var(--accent)"></i> ${carInfo}</div>
+                <div class="${plateClass}">${carPlate}</div>
+              </div>
+
+              <div class="info-grid">
+                <div><i class="fa-solid fa-user" style="color:var(--accent)"></i> اسم العميل: <strong>${clientName}</strong></div>
+                <div><i class="fa-solid fa-id-card" style="color:var(--accent)"></i> سيريال نمبر: <strong style="color:var(--accent);">${serialNumber}</strong></div>
+                <div><i class="fa-solid fa-warehouse" style="color:var(--accent)"></i> ورشة العمل: <strong>${workshopName}</strong></div>
+                <div><i class="fa-solid fa-screwdriver-wrench" style="color:var(--accent)"></i> القسم الفني: <strong>${sectionName}</strong></div>
+              </div>
+
+              <div class="status-box">
+                <div>حالة الصيانة الحالية:</div>
+                <span><strong>${statusText}</strong></span>
+              </div>
+            </div>
+          `;
+        });
+
+      } catch (err) {
+        container.innerHTML = `
+          <div class="msg-box" style="color:#dc2626;">
+            <p>حدث خطأ أثناء الاتصال بقاعدة البيانات: ${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    document.getElementById('searchInput').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        searchCar();
+      }
+    });
+  </script>
+</body>
+</html>
