@@ -179,32 +179,111 @@ try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);window.db=fi
  $('npInvoiceRows').addEventListener('click',e=>{const b=e.target.closest('[data-np-pending-delete]');if(!b)return;const i=Number(b.dataset.npPendingDelete);if(!Number.isInteger(i)||i<0||i>=npInvoiceDraftLines.length)return;npInvoiceDraftLines.splice(i,1);renderNpInvoiceDraft();});
  function printNpSupplierInvoice(order,party){const w=window.open('','_blank');if(!w){alert('اسمح بفتح النوافذ المنبثقة لطباعة إذن التوريد.');return;}const rows=order.lines.map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.code||'—')}</td><td>${esc(l.name)}</td><td>${Number(l.qty)}</td><td>${Number(l.price).toFixed(2)}</td><td>${Number(l.total).toFixed(2)}</td></tr>`).join('');w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إذن توريد ${esc(order.orderNo)}</title><style>body{font-family:Tahoma,Arial;padding:25px;color:#111}h1,h2{text-align:center}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #444;padding:9px;text-align:right}th{background:#eee}.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;border:1px solid #aaa;padding:12px}.total{font-size:19px;font-weight:bold;margin-top:18px}footer{display:flex;justify-content:space-between;margin-top:55px}</style></head><body><h1>مركز أوتو نون (NON)</h1><h2>إذن توريد مخزني</h2><div class="meta"><div>رقم الإذن: <b>${esc(order.orderNo)}</b></div><div>التاريخ: ${new Date(order.date).toLocaleString('ar-EG')}</div><div>اسم المورد: <b>${esc(party.name)}</b></div><div>رقم فاتورة المورد: ${esc(order.supplierInvoiceNo||'—')}</div></div><table><thead><tr><th>م</th><th>كود الصنف / الباركود</th><th>اسم الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table><div class="total">إجمالي التوريد: ${Number(order.total).toFixed(2)} ج.م</div><footer><span>توقيع المورد: ....................</span><span>أمين المخزن: ....................</span><span>اعتماد الإدارة: ....................</span></footer><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close();}
  $('npSaveInvoice').addEventListener('click',async()=>{
-  const party=parties.find(p=>p.id===$('npInvoiceParty').value&&partyType(p)==='supplier'&&p.active!==false);if(!party||!npInvoiceDraftLines.length){alert('اختر المورد وأضف صنفًا واحدًا على الأقل إلى قائمة التوريد.');return;}if(npInvoiceDraftLines.some(x=>String(x.supplierId)!==String(party.id))){alert('المورد المختار مختلف عن المورد المرتبط بالأصناف في قائمة التوريد.');return;}const d=db();if(!d){alert('Firebase غير متصل. لم يتم حفظ الفاتورة.');return;}
-  const now=new Date().toISOString(),orderRef=d.collection(collections.orders).doc(),orderNo=$('npInvoiceRef').value.trim()||('PUR-'+Date.now()),total=npInvoiceDraftLines.reduce((a,x)=>a+x.total,0),lines=npInvoiceDraftLines.map(x=>({...x}));
-  try{await withTimeout(d.runTransaction(async tx=>{
-   const itemRefs=lines.map(l=>d.collection('inventory').doc(String(l.itemId))),snaps=[];for(const ref of itemRefs)snaps.push(await tx.get(ref));
-   const updatedById=new Map();snaps.forEach((snap,i)=>{if(!snap.exists)throw Error('الصنف '+lines[i].name+' لم يعد موجودًا في المخزن.');const cur=snap.data()||{},id=lines[i].itemId,old=updatedById.get(id)||{ref:itemRefs[i],data:cur,qty:0};old.qty+=Number(lines[i].qty);updatedById.set(id,old);});
-   updatedById.forEach(({ref,data,qty})=>tx.update(ref,{qty:Number(data.qty??data.quantity??0)+qty,supplierId:party.id,supplierName:party.name,updatedAt:now}));
-   const order={id:orderRef.id,orderNo,supplierInvoiceNo:$('npInvoiceRef').value.trim(),supplierId:party.id,supplierName:party.name,supplierType:accountTypeLabel(party),lines,total,paid:0,remaining:total,date:now,createdAt:now,type:'توريد',source:'supplier_purchase_invoice'};tx.set(orderRef,order);
-   const ledgerRef=d.collection(collections.ledger).doc();tx.set(ledgerRef,{id:ledgerRef.id,supplierId:party.id,supplierName:party.name,supplierType:accountTypeLabel(party),orderNo,type:'توريد',value:total,date:now,notes:'فاتورة توريد متعددة الأصناف'});
-   lines.forEach(line=>{const lotRef=d.collection(collections.legacyLots).doc();tx.set(lotRef,{id:lotRef.id,supplierId:party.id,supplierName:party.name,itemId:line.itemId,itemName:line.name,code:line.code||'',invoiceNo:orderNo,originalQty:Number(line.qty),remainingQty:Number(line.qty),unitCost:Number(line.price),createdAt:now,orderId:orderRef.id});});
-  }),'حفظ فاتورة التوريد');
-  const localOrders=localRead('supplier_issue_orders');
-  const savedOrder={id:orderRef.id,orderNo,supplierInvoiceNo:$('npInvoiceRef').value.trim(),supplierId:party.id,supplierName:party.name,lines,total,paid:0,remaining:total,date:now,createdAt:now,type:'توريد',source:'supplier_purchase_invoice'};
-  const existingOrderIndex=localOrders.findIndex(x=>String(x.id)===String(orderRef.id));
-  if(existingOrderIndex>=0)localOrders[existingOrderIndex]=savedOrder;else localOrders.push(savedOrder);
-  localStorage.setItem('supplier_issue_orders',JSON.stringify(localOrders));
-  const localLedger=localRead('supplier_ledger');
-  if(!localLedger.some(x=>String(x.id)==='LED-'+String(orderRef.id)))localLedger.push({id:'LED-'+orderRef.id,supplierId:party.id,supplierName:party.name,orderNo,type:'توريد',value:total,date:now,notes:'فاتورة توريد متعددة الأصناف'});
-  localStorage.setItem('supplier_ledger',JSON.stringify(localLedger));
-  const printedOrder={id:orderRef.id,orderNo,supplierInvoiceNo:$('npInvoiceRef').value.trim(),supplierId:party.id,supplierName:party.name,lines,total,paid:0,remaining:total,date:now};
-  npInvoiceDraftLines=[];renderNpInvoiceDraft();$('npInvoiceQty').value='1';$('npInvoiceCost').value='';$('npInvoiceRef').value='';$('npInvoiceItemSearch').value='';$('npInvoiceItem').value='';
-  await refresh();
-  // تحديث قائمة فواتير التوريد وسجل أذونات الموردين وجدول المخزن فور نجاح الحفظ.
-  renderInvoices();renderSupplierOrders();renderSupplierRecords();
-  if(typeof loadInventoryData==='function')await loadInventoryData();
-  printNpSupplierInvoice(printedOrder,party);alert('تم حفظ الفاتورة وربطها بقائمة التوريد، وتحديث كميات المخزن واسم المورد وطباعة إذن التوريد.');
-  }catch(e){console.error(e);alert('فشل حفظ الفاتورة: '+(e.message||e));}
+  const button=$('npSaveInvoice');
+  if(button.disabled)return;
+  const party=parties.find(p=>String(p.id)===String($('npInvoiceParty').value)&&partyType(p)==='supplier'&&p.active!==false&&p.archived!==true);
+  if(!party||!npInvoiceDraftLines.length){alert('اختر المورد وأضف صنفًا واحدًا على الأقل إلى قائمة التوريد.');return;}
+  if(npInvoiceDraftLines.some(x=>String(x.supplierId)!==String(party.id))){alert('المورد المختار مختلف عن المورد المرتبط بالأصناف في قائمة التوريد.');return;}
+  const d=db();
+  if(!d){alert('Firebase غير متصل. لم يتم حفظ الفاتورة.');return;}
+
+  const lines=npInvoiceDraftLines.map(x=>({...x,qty:Number(x.qty),price:Number(x.price),total:Number(x.qty)*Number(x.price)}));
+  if(lines.some(x=>!x.itemId||!(x.qty>0)||!Number.isFinite(x.qty)||!(x.price>=0)||!Number.isFinite(x.price))){
+    alert('يوجد صنف أو كمية أو سعر غير صحيح في قائمة التوريد. راجع الأصناف ثم حاول مرة أخرى.');return;
+  }
+  const uniqueIds=[...new Set(lines.map(x=>String(x.itemId)))];
+  if(uniqueIds.length+lines.length+2>500){alert('عدد الأصناف كبير جدًا لحفظ الفاتورة دفعة واحدة. قسّم الفاتورة إلى فاتورتين.');return;}
+
+  const now=new Date().toISOString();
+  const orderRef=d.collection(collections.orders).doc();
+  const orderNo=$('npInvoiceRef').value.trim()||('PUR-'+Date.now());
+  const total=lines.reduce((a,x)=>a+x.total,0);
+  const supplierInvoiceNo=$('npInvoiceRef').value.trim();
+  const buttonLabel=button.textContent;
+  let committed=false;
+  button.disabled=true;
+  button.textContent='جاري حفظ الفاتورة وتحديث المخزن...';
+
+  try{
+    // اقرأ كل الأصناف أولاً، ثم نفّذ التعديلات في Batch واحدة لتفادي أخطاء المعاملات المتزامنة.
+    const itemRefs=uniqueIds.map(id=>d.collection(collections.inventory).doc(id));
+    const itemSnaps=await withTimeout(Promise.all(itemRefs.map(ref=>ref.get())),'قراءة أصناف المخزن');
+    const itemData=new Map();
+    itemSnaps.forEach((snap,i)=>{
+      if(!snap.exists)throw new Error('الصنف '+(lines.find(x=>String(x.itemId)===uniqueIds[i])?.name||uniqueIds[i])+' غير موجود في مجموعة inventory على السيرفر.');
+      itemData.set(uniqueIds[i],snap.data()||{});
+    });
+
+    const qtyById=new Map();
+    lines.forEach(line=>qtyById.set(String(line.itemId),(qtyById.get(String(line.itemId))||0)+line.qty));
+    const batch=d.batch();
+    uniqueIds.forEach(id=>{
+      const cur=itemData.get(id)||{};
+      batch.update(d.collection(collections.inventory).doc(id),{
+        qty:Number(cur.qty??cur.quantity??0)+qtyById.get(id),
+        supplierId:String(party.id),
+        supplierName:party.name,
+        buyPrice:Number(lines.find(x=>String(x.itemId)===id)?.price??cur.buyPrice??0),
+        updatedAt:now
+      });
+    });
+
+    const order={
+      id:orderRef.id,orderNo,supplierInvoiceNo,supplierId:String(party.id),supplierName:party.name,
+      supplierType:accountTypeLabel(party),lines,total,paid:0,remaining:total,date:now,
+      createdAt:now,type:'توريد',source:'supplier_purchase_invoice'
+    };
+    batch.set(orderRef,order);
+
+    const ledgerRef=d.collection(collections.ledger).doc();
+    batch.set(ledgerRef,{
+      id:ledgerRef.id,supplierId:String(party.id),supplierName:party.name,
+      supplierType:accountTypeLabel(party),orderNo,type:'توريد',value:total,
+      date:now,notes:'فاتورة توريد متعددة الأصناف'
+    });
+
+    lines.forEach(line=>{
+      const lotRef=d.collection(collections.legacyLots).doc();
+      batch.set(lotRef,{
+        id:lotRef.id,supplierId:String(party.id),supplierName:party.name,
+        itemId:String(line.itemId),itemName:line.name,code:line.code||'',
+        invoiceNo:orderNo,originalQty:line.qty,remainingQty:line.qty,
+        unitCost:line.price,createdAt:now,orderId:orderRef.id
+      });
+    });
+
+    await withTimeout(batch.commit(),'اعتماد فاتورة التوريد');
+    committed=true;
+
+    // حدّث النسخة المحلية بعد تأكيد نجاح السيرفر فقط.
+    const localOrders=localRead('supplier_issue_orders');
+    localOrders.push(order);
+    localStorage.setItem('supplier_issue_orders',JSON.stringify(localOrders));
+    const localLedger=localRead('supplier_ledger');
+    localLedger.push({id:'LED-'+orderRef.id,supplierId:String(party.id),supplierName:party.name,orderNo,type:'توريد',value:total,date:now,notes:'فاتورة توريد متعددة الأصناف'});
+    localStorage.setItem('supplier_ledger',JSON.stringify(localLedger));
+
+    const printedOrder={...order};
+    npInvoiceDraftLines=[];
+    $('npInvoiceQty').value='1';$('npInvoiceCost').value='';$('npInvoiceRef').value='';
+    $('npInvoiceItemSearch').value='';$('npInvoiceItem').value='';
+    renderNpInvoiceDraft();
+
+    // فشل تحديث الشاشة أو منع نافذة الطباعة لا يُحوّل فاتورة محفوظة إلى رسالة فشل.
+    try{await refresh();}catch(refreshError){console.warn('Invoice saved; refresh deferred:',refreshError);}
+    try{renderInvoices();if(typeof renderSupplierOrders==='function')renderSupplierOrders();if(typeof renderSupplierRecords==='function')renderSupplierRecords();}catch(uiError){console.warn('Invoice saved; UI refresh deferred:',uiError);}
+    if(typeof loadInventoryData==='function'){try{await loadInventoryData();}catch(inventoryError){console.warn('Invoice saved; inventory refresh deferred:',inventoryError);}}
+
+    alert('تم حفظ الفاتورة وإضافة الكميات للمخزن وتسجيل حساب المورد بنجاح.');
+    printNpSupplierInvoice(printedOrder,party);
+  }catch(e){
+    console.error('Supplier invoice save failed:',e);
+    const detail=[e&&e.code,e&&e.message].filter(Boolean).join(' — ')||String(e);
+    alert((committed?'تم حفظ الفاتورة بالفعل، لكن تعذر تحديث بعض البيانات المعروضة: ':'فشل حفظ الفاتورة. تفاصيل الخطأ: ')+detail);
+  }finally{
+    button.disabled=false;
+    button.textContent=buttonLabel;
+  }
  });
   const firstTab=document.querySelector('#nonPartySystem [data-np-tab="suppliers"]');if(firstTab)firstTab.click();const start=()=>{refresh();startSupplierLiveSync();};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
  window.addEventListener('storage',e=>{if(e.key==='suppliers_list')refresh();});
