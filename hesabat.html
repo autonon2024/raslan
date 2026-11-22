@@ -1378,7 +1378,25 @@ body.dark-mode{background:#0b1420!important;color:#e5edf6!important}body.dark-mo
 #salesDailyModal .sales-daily-left-row-three{grid-template-columns:minmax(0,1fr)!important;margin-top:8px!important;}
 #salesDailyModal .sales-daily-left-row-three>.card-box{width:100%!important;}
 @media(max-width:760px){#salesDailyModal .sales-daily-grand-head{grid-template-columns:repeat(2,minmax(0,1fr))!important;}#salesDailyModal .sales-daily-left-row-two{grid-template-columns:repeat(2,minmax(0,1fr))!important;}}
-</style></head>
+</style>
+<style id="client-ledger-professional-style">
+#clientAccountsModal table{min-width:850px}
+#clientAccountsModal th,#clientAccountsModal td{vertical-align:middle}
+#clientAccountsModal tbody tr:nth-child(even){background:rgba(148,163,184,.07)}
+#clientAccountsModal .btn-action{white-space:nowrap}
+#clientLifeStatementContent .client-ledger-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;margin:10px 0}
+#clientLifeStatementContent .client-ledger-summary>div{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:11px;text-align:center;color:#172033}
+#clientLifeStatementContent .client-ledger-summary b{display:block;color:#475569;font-size:12px;margin-bottom:5px}
+#clientLifeStatementContent .client-ledger-summary strong{font-size:17px;color:#123b5d}
+#clientLifeStatementContent table{min-width:1000px;border-collapse:collapse}
+#clientLifeStatementContent th{background:#173753!important;color:#fff!important}
+#clientLifeStatementContent td{vertical-align:top;line-height:1.55}
+#clientLifeStatementContent .client-ledger-section{margin:12px 0;padding:12px;border:1px solid #dbe4ee;border-radius:12px;background:#fff}
+@media(max-width:700px){#clientLifeStatementContent .client-ledger-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+body.dark-mode #clientLifeStatementContent .client-ledger-summary>div,body.dark-mode #clientLifeStatementContent .client-ledger-section{background:#152638;color:#e5edf6;border-color:#354a60}
+</style>
+
+</head>
 <body id="pageBody">
 <div class="header-bar no-print">
 <div class="brand">
@@ -1392,10 +1410,10 @@ body.dark-mode{background:#0b1420!important;color:#e5edf6!important}body.dark-mo
 <button class="btn-action btn-blue" data-quick="treasury" onclick="openTreasuryManagementModal()"><i class="fa-solid fa-vault"></i> إدارة الخزن</button>
 <button class="btn-action btn-green" data-quick="expenses" onclick="openExpensesModal()"><i class="fa-solid fa-money-bill-wave"></i> المصاريف</button>
 <button class="btn-action btn-purple" data-quick="workers" onclick="openWorkersModal()"><i class="fa-solid fa-users-gear"></i> العمال والأقسام</button>
-<button class="btn-action btn-green" data-quick="clients" onclick="openClientAccountsModal()"><i class="fa-solid fa-address-book"></i> كشف العملاء</button>
+<button class="btn-action btn-green" data-quick="clients" onclick="openClientAccountsModal()"><i class="fa-solid fa-address-book"></i> كشف حساب العملاء</button>
 <button class="btn-action btn-blue" data-quick="client-balances" onclick="openClientBalancesModal()"><i class="fa-solid fa-wallet"></i> رصيد العملاء</button>
 <button class="btn-action btn-purple" data-quick="advance-payment" onclick="openAdvancePaymentModal()"><i class="fa-solid fa-hand-holding-dollar"></i> دفعة مقدمة</button>
-<button class="btn-action btn-orange" onclick="openClientLifeStatement()"><i class="fa-solid fa-file-lines"></i> كشف العميل</button>
+<button class="btn-action btn-orange" onclick="openClientLifeStatement()"><i class="fa-solid fa-file-lines"></i> سجل العملاء</button>
 <button class="btn-action btn-green" data-quick="collections" onclick="openCollectionsModal()"><i class="fa-solid fa-hand-holding-dollar"></i> التحصيلات</button>
 <button class="btn-action btn-blue" data-quick="archive" onclick="openArchiveModal()"><i class="fa-solid fa-box-archive"></i> الأرشيف</button>
 <button class="btn-action btn-orange" data-quick="suppliers" onclick="openServiceModal('suppliersServiceModal')"><i class="fa-solid fa-truck-field"></i> الموردون</button>
@@ -2335,7 +2353,7 @@ body.dark-mode{background:#0b1420!important;color:#e5edf6!important}body.dark-mo
 <div id="clientAccountsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
 <div style="background:var(--card-bg); width:92%; max-width:1000px; max-height:85vh; border-radius:12px; padding:20px; display:flex; flex-direction:column; border:2px solid var(--btn-green);">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-<h3 style="color:var(--btn-green);"><i class="fa-solid fa-address-book"></i> كشف حساب العملاء والزيارات والمديونيات</h3>
+<h3 style="color:var(--btn-green);"><i class="fa-solid fa-address-book"></i> كشف حساب العملاء</h3>
 <div style="display:flex; gap:8px;">
 <button class="btn-action btn-green" onclick="printElement('clientAccountsPrintArea')" style="padding:4px 10px;"><i class="fa-solid fa-print"></i> طباعة الكشف</button>
 <button class="btn-action btn-danger" onclick="closeClientAccountsModal()" style="padding:4px 10px;"><i class="fa-solid fa-xmark"></i> إغلاق</button>
@@ -5221,6 +5239,16 @@ body.dark-mode{background:#0b1420!important;color:#e5edf6!important}body.dark-mo
       catch(e){alert('تعذر حذف الرصيد: '+(e.message||e));}
     }
 
+
+    let clientAccountsRowsCache = [];
+    const clientAccountNorm = v => String(v || '').normalize('NFKC')
+      .replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي')
+      .replace(/\s+/g,' ').trim().toLowerCase();
+    const clientAccountEsc = v => String(v ?? '').replace(/[&<>"']/g,c=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+    const clientAccountMoney = v => (Number(v)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
     async function openClientAccountsModal() {
       document.getElementById('clientAccountsModal').style.display = 'flex';
       await loadClientAccountsData();
@@ -5229,63 +5257,106 @@ body.dark-mode{background:#0b1420!important;color:#e5edf6!important}body.dark-mo
 
     async function loadClientAccountsData() {
       const tbody = document.getElementById('clientAccountsTableBody');
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">جاري تحميل حسابات العملاء...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">جاري تحميل حسابات العملاء...</td></tr>`;
       try {
         const snap = await db.collection('client_accounts').get();
-        let map = {};
+        const customers = new Map();
         snap.forEach(doc => {
           const d = doc.data() || {};
-          const name = String(d.clientName || 'عميل').trim().replace(/\s+/g,' ');
+          const name = String(d.clientName || d.customerName || 'عميل').trim().replace(/\s+/g,' ');
           const phone = String(d.clientPhone || d.phone || '').trim();
-          const norm = v => String(v||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim().toLowerCase();
-          const key = norm(name);
-          if (!map[key]) map[key] = { name, phone: phone || '---', visits: 0, totalSpent: 0, totalPaid: 0, remaining: 0, phones:new Set(), cars:new Set(), plates:new Set() };
-          if (d.recordType !== 'advance_payment') map[key].visits += 1;
-          map[key].totalSpent += (parseFloat(d.totalAmount) || 0);
-          map[key].totalPaid += (parseFloat(d.paidAmount) || 0);
-          map[key].remaining += (parseFloat(d.remainingAmount) || 0);
-          if(phone)map[key].phones.add(phone);
-          if(d.carInfo)map[key].cars.add(d.carInfo);
-          if(d.carPlate||d.plate)map[key].plates.add(d.carPlate||d.plate);
+          const key = clientAccountNorm(phone) || clientAccountNorm(name);
+          if (!customers.has(key)) customers.set(key, {
+            name, phone, visitsMap:new Map(), totalSpent:0, totalPaid:0, remaining:0,
+            phones:new Set(), cars:new Set(), plates:new Set()
+          });
+          const c = customers.get(key);
+          if (!c.phone && phone) c.phone = phone;
+          if (phone) c.phones.add(phone);
+          if (d.carInfo) c.cars.add(String(d.carInfo));
+          if (d.carPlate || d.plate) c.plates.add(String(d.carPlate || d.plate));
+
+          // سجل client_accounts قد يحتوي أكثر من مستند لنفس الفاتورة؛ احتسب الفاتورة مرة واحدة.
+          const invoiceKey = String(d.invoiceSerial || d.invoiceNumber || d.orderNo || doc.id);
+          if (!c.visitsMap.has(invoiceKey)) {
+            const total = Number(d.totalAmount ?? d.grandTotal ?? d.total ?? 0) || 0;
+            const paid = Number(d.paidAmount ?? d.amountPaid ?? 0) || 0;
+            const remaining = Number(d.remainingAmount ?? Math.max(0,total-paid)) || 0;
+            c.visitsMap.set(invoiceKey, { ...d, id:doc.id, invoiceKey, total, paid, remaining });
+          } else {
+            // احتفظ بالقيم الأحدث/الأكبر عند وجود نسخة مكررة لنفس رقم الفاتورة.
+            const old = c.visitsMap.get(invoiceKey);
+            const total = Number(d.totalAmount ?? d.grandTotal ?? d.total ?? 0) || 0;
+            const paid = Number(d.paidAmount ?? d.amountPaid ?? 0) || 0;
+            const remaining = Number(d.remainingAmount ?? Math.max(0,total-paid)) || 0;
+            old.total = Math.max(old.total,total);
+            old.paid = Math.max(old.paid,paid);
+            old.remaining = Math.max(old.remaining,remaining);
+          }
         });
 
-        renderClientAccountsTable(Object.values(map).map(c=>({...c,phone:[...c.phones].join('، ')||c.phone,cars:[...c.cars],plates:[...c.plates]})));
+        clientAccountsRowsCache = [...customers.values()].map(c => {
+          const visits = [...c.visitsMap.values()];
+          return {
+            ...c, visits,
+            phone:[...c.phones].join('، ') || c.phone || '---',
+            totalSpent:visits.reduce((a,x)=>a+x.total,0),
+            totalPaid:visits.reduce((a,x)=>a+x.paid,0),
+            remaining:visits.reduce((a,x)=>a+x.remaining,0),
+            visitsCount:visits.length,
+            cars:[...c.cars], plates:[...c.plates]
+          };
+        }).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+        filterClientAccounts();
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">خطأ: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;">خطأ في تحميل كشف حساب العملاء: ${clientAccountEsc(e.message)}</td></tr>`;
       }
     }
 
     function renderClientAccountsTable(list) {
       const tbody = document.getElementById('clientAccountsTableBody');
       tbody.innerHTML = '';
-      if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#64748b;">لا توجد حسابات مسجلة للعملاء.</td></tr>`;
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#64748b;">لا توجد حسابات مطابقة للبحث.</td></tr>`;
         return;
       }
-      list.forEach(c => {
-        tbody.innerHTML += `
-          <tr>
-            <td><b>${c.name}</b></td>
-            <td>${c.phone}<br><small>${(c.plates||[]).join('، ')}</small></td>
-            <td>${c.visits}</td>
-            <td>${c.totalSpent}</td>
-            <td style="color:var(--btn-green);">${c.totalPaid}</td>
-            <td style="color:var(--danger-red); font-weight:bold;">${c.remaining}</td>
-            <td><div class="qr-mini" data-qr-payload="https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#" style="width:76px;height:76px;margin:auto"></div></td>
-            <td class="no-print">
-              <button class="btn-action btn-blue" style="padding:3px 8px; font-size:0.75rem;" onclick="showClientStatement('${c.name}')"><i class="fa-solid fa-list"></i> كشف زيارات</button>
-            </td>
-          </tr>
-        `;
+      tbody.innerHTML = list.map(c => `
+        <tr>
+          <td><b>${clientAccountEsc(c.name)}</b></td>
+          <td>${clientAccountEsc(c.phone)}<br><small>${clientAccountEsc((c.plates||[]).join('، '))}</small></td>
+          <td><b>${c.visitsCount}</b></td>
+          <td>${clientAccountMoney(c.totalSpent)} جنيه</td>
+          <td style="color:var(--btn-green);font-weight:bold;">${clientAccountMoney(c.totalPaid)} جنيه</td>
+          <td style="color:var(--danger-red);font-weight:bold;">${clientAccountMoney(c.remaining)} جنيه</td>
+          <td><div class="qr-mini" data-qr-payload="${clientAccountEsc(JSON.stringify({name:c.name,phone:c.phone,plates:c.plates}))}" style="width:76px;height:76px;margin:auto"></div></td>
+          <td class="no-print">
+            <button class="btn-action btn-blue" style="padding:5px 9px;font-size:.75rem;" onclick="showClientStatementByKey('${clientAccountEsc(c.name).replace(/'/g,"&#39;")}')"><i class="fa-solid fa-list"></i> الزيارات والتفاصيل</button>
+          </td>
+        </tr>`).join('');
+      // توليد QR من بيانات العميل نفسها بدلاً من رابط ثابت.
+      if (window.QRCode) tbody.querySelectorAll('.qr-mini').forEach(el => {
+        const payload = el.getAttribute('data-qr-payload') || '';
+        el.innerHTML = '';
+        try { new QRCode(el,{text:payload,width:76,height:76,correctLevel:QRCode.CorrectLevel.M}); } catch(e) {}
       });
     }
 
     function filterClientAccounts() {
-      loadClientAccountsData();
+      const q = clientAccountNorm(document.getElementById('clientSearchAccountInput')?.value || '');
+      const list = !q ? clientAccountsRowsCache : clientAccountsRowsCache.filter(c =>
+        [c.name,c.phone,...(c.plates||[]),...(c.cars||[])].some(v=>clientAccountNorm(v).includes(q))
+      );
+      renderClientAccountsTable(list);
     }
 
+    function showClientStatementByKey(clientName) {
+      const search = document.getElementById('clientLifeSearch');
+      if (search) search.value = clientName;
+      openClientLifeStatement();
+      searchClientLifeStatement();
+    }
     async function showClientStatement(clientName) {
-      alert(`عرض تفاصيل وزيارات العميل: ${clientName}`);
+      showClientStatementByKey(clientName);
     }
   </script>
 <script id="print-professional-v5-js">
@@ -6744,8 +6815,8 @@ window.sendCollectionWhatsApp=function(){
 </script>
 <div class="non-service-overlay no-print" id="clientLifeStatementModal" onclick="if(event.target===this)closeClientLifeStatement()" style="z-index:7000">
 <div class="non-service-window" style="max-width:1200px">
-<div class="non-service-window-head"><h2>كشف العميل — سجل التعامل الكامل بالمركز</h2><button class="non-service-close" onclick="closeClientLifeStatement()">إغلاق ✕</button></div>
-<div class="card-box" style="box-shadow:none">
+<div class="non-service-window-head"><h2>سجل العملاء — سجل التعامل الكامل بالمركز</h2><button class="non-service-close" onclick="closeClientLifeStatement()">إغلاق ✕</button></div>
+<div class="card-box client-life-card" style="box-shadow:none">
 <div class="form-grid"><div class="form-field"><label>ابحث باسم العميل أو رقم الهاتف أو اللوحة</label><input id="clientLifeSearch" placeholder="اكتب الاسم أو الهاتف أو رقم اللوحة"/></div><div class="form-field" style="justify-content:end"><button class="btn-action btn-blue" onclick="searchClientLifeStatement()">بحث وعرض السجل</button></div></div>
 <div id="clientLifeStatementContent"><p>اكتب اسم العميل أو رقم هاتفه ثم اضغط بحث لعرض سجل تعاملاته المتاح في قاعدة البيانات.</p></div>
 <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn-action btn-green" onclick="printClientLifeStatement()"><i class="fa-solid fa-print"></i> طباعة كشف العميل</button><button class="btn-action btn-blue" onclick="closeClientLifeStatement()">رجوع</button></div>
@@ -6753,28 +6824,169 @@ window.sendCollectionWhatsApp=function(){
 </div>
 </div>
 <script>
-function openClientLifeStatement(){document.getElementById('clientLifeStatementModal').classList.add('is-open');document.getElementById('clientLifeSearch').focus();}
+function openClientLifeStatement(){document.getElementById('clientLifeStatementModal').classList.add('is-open');setTimeout(()=>document.getElementById('clientLifeSearch').focus(),30);}
 function closeClientLifeStatement(){document.getElementById('clientLifeStatementModal').classList.remove('is-open');}
 function clientLifeEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function clientLifeVal(d,keys){for(const k of keys){if(d[k]!==undefined&&d[k]!==null&&d[k]!=='')return d[k]}return '—'}
+
 async function searchClientLifeStatement(){
- const q=(document.getElementById('clientLifeSearch').value||'').trim().toLowerCase(); const out=document.getElementById('clientLifeStatementContent');
- if(!q){alert('اكتب اسم العميل أو رقم الهاتف أو اللوحة أولاً');return}
- out.innerHTML='<p>جاري جمع بيانات العميل من سجلات المركز...</p>';
+ const rawQ=(document.getElementById('clientLifeSearch')?.value||'').trim();
+ const out=document.getElementById('clientLifeStatementContent');
+ if(!rawQ){alert('اكتب اسم العميل أو رقم الهاتف أو اللوحة أولاً');return}
+ out.innerHTML='<p style="text-align:center;padding:22px">جاري تجهيز كشف الزيارات التفصيلي...</p>';
+ const norm=v=>String(v??'').normalize('NFKC').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim().toLowerCase();
+ const val=(d,keys)=>{for(const k of keys){if(d&&d[k]!==undefined&&d[k]!==null&&d[k]!=='')return d[k]}return ''};
+ const num=v=>{if(typeof v==='string')v=v.replace(/[,\sجنيه]/g,'');const n=Number(v);return Number.isFinite(n)?n:0};
+ const money=v=>num(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' ج';
+ const esc=clientLifeEsc;
+ const dateText=v=>{
+   if(!v)return 'التاريخ غير مسجل';
+   if(typeof v==='object' && typeof v.toDate==='function')v=v.toDate();
+   if(typeof v==='number') {const dt=new Date(v<1e12?v*1000:v);return isNaN(dt)?String(v):dt.toLocaleString('ar-EG');}
+   const dt=new Date(v);return isNaN(dt)?String(v):dt.toLocaleString('ar-EG');
+ };
+ const listText=v=>{
+   if(v===undefined||v===null||v==='')return [];
+   if(Array.isArray(v))return v;
+   if(typeof v==='object')return Object.entries(v).map(([k,x])=>typeof x==='object'?{name:k,...x}:{name:k,quantity:x});
+   if(typeof v==='string'){
+     const s=v.trim(); if(!s)return [];
+     try{const parsed=JSON.parse(s);if(Array.isArray(parsed))return parsed;if(parsed&&typeof parsed==='object')return Object.entries(parsed).map(([k,x])=>typeof x==='object'?{name:k,...x}:{name:k,quantity:x});}catch(e){}
+     return s.split(/\n|،|;/).map(x=>x.trim()).filter(Boolean);
+   }
+   return [v];
+ };
+ const itemName=x=>typeof x==='object'?val(x,['name','itemName','partName','serviceName','title','description','productName','label'])||'صنف / خدمة':String(x);
+ const itemQty=x=>typeof x==='object'?val(x,['quantity','qty','count','amountQty'])||'': '';
+ const itemPrice=x=>typeof x==='object'?num(val(x,['price','unitPrice','salePrice','cost','totalPrice','total'])):0;
+ const itemTotal=x=>typeof x==='object'?num(val(x,['total','totalPrice','subtotal','amount'])):(0);
+ const renderItems=(raw)=>{
+   const items=listText(raw);
+   if(!items.length)return '<span class="visit-muted">لا توجد تفاصيل أصناف مسجلة</span>';
+   return `<div class="visit-items">${items.map(x=>{
+     const name=itemName(x),qty=itemQty(x),price=itemPrice(x),sum=itemTotal(x);
+     const extra=[qty!==''?'الكمية: '+qty:'',price?'السعر: '+money(price):'',sum?'الإجمالي: '+money(sum):''].filter(Boolean).join(' • ');
+     return `<div class="visit-item"><b>${esc(name)}</b>${extra?`<small>${esc(extra)}</small>`:''}</div>`;
+   }).join('')}</div>`;
+ };
+ const sources=['invoices_archive','workshop_archive','client_accounts','client_collection_receipts','client_advance_payments','client_advance_refunds','treasury_transactions','cars','accounting_queue'];
  try{
-  const sources=['invoices_archive','workshop_archive','client_accounts','client_collection_receipts','treasury_transactions','cars','accounting_queue'];
   const records=[];
-  for(const col of sources){try{const snap=await db.collection(col).get();snap.forEach(doc=>{const d=doc.data()||{};const hay=[d.clientName,d.name,d.customerName,d.phone,d.clientPhone,d.carPlate,d.plate,d.carInfo,d.invoiceSerial,d.carId].map(x=>String(x??'').toLowerCase()).join(' | ');if(hay.includes(q))records.push({source:col,id:doc.id,...d});});}catch(e){console.warn('تعذر قراءة '+col,e)}}
-  const unique=new Map(); records.forEach(r=>{const key=[r.source,r.id].join(':');unique.set(key,r)});
-  const rows=[...unique.values()].sort((a,b)=>new Date(b.dateStr||b.date||b.createdAt||b.timestamp||0)-new Date(a.dateStr||a.date||a.createdAt||a.timestamp||0));
-  if(!rows.length){out.innerHTML='<p>لم يتم العثور على سجلات مطابقة. جرّب الاسم الكامل أو رقم الهاتف المسجل.</p>';return}
-  const first=rows[0];const name=clientLifeVal(first,['clientName','customerName','name']);const phone=clientLifeVal(first,['clientPhone','phone']);
-  let html=`<div class="card-box"><h3>البيانات الأساسية</h3><p><b>اسم العميل:</b> ${clientLifeEsc(name)} &nbsp; <b>الهاتف:</b> ${clientLifeEsc(phone)}</p><p><b>عدد السجلات المطابقة:</b> ${rows.length} &nbsp; <b>مصادر السجل:</b> الفواتير والأرشيف والحسابات والتحصيلات والسيارات المتاحة بالنظام.</p></div>`;
-  html+='<div class="table-responsive"><table><thead><tr><th>التاريخ</th><th>نوع السجل</th><th>رقم الفاتورة/الإذن</th><th>السيارة / اللوحة</th><th>الإصلاحات / التفاصيل</th><th>الإجمالي</th><th>المدفوع المسجل</th><th>المتبقي</th><th>ملاحظات</th></tr></thead><tbody>';
-  for(const d of rows){const date=clientLifeVal(d,['dateFormatted','dateStr','date','createdAt','timestamp']);const details=clientLifeVal(d,['repairDetails','repairs','services','parts','items','description','workDescription','notes']);const total=clientLifeVal(d,['totalAmount','grandTotal','total','totalSum']);const paid=clientLifeVal(d,['paidAmount','amountPaid','paymentAmount','amount']);const rem=clientLifeVal(d,['remainingAmount','remaining','debt']);html+=`<tr><td>${clientLifeEsc(date)}</td><td>${clientLifeEsc(d.source)}</td><td>${clientLifeEsc(clientLifeVal(d,['invoiceSerial','receiptNo','orderNo','id']))}</td><td>${clientLifeEsc(clientLifeVal(d,['carInfo','carPlate','plate','vehicle']))}</td><td>${clientLifeEsc(typeof details==='object'?JSON.stringify(details):details)}<br><small>قطع الغيار: ${clientLifeEsc(typeof d.parts==='object'?JSON.stringify(d.parts):clientLifeVal(d,['parts','partNames']))} — الخدمات: ${clientLifeEsc(typeof d.services==='object'?JSON.stringify(d.services):clientLifeVal(d,['services','serviceNames']))}</small></td><td>${clientLifeEsc(total)}</td><td>${clientLifeEsc(paid)}</td><td>${clientLifeEsc(rem)}</td><td>${clientLifeEsc(clientLifeVal(d,['notes','description','managerDiscountReason']))}</td></tr>`}
-  html+='</tbody></table></div><p style="margin-top:10px;color:#64748b">يعرض الكشف السجلات المتوفرة فعلياً في قاعدة البيانات؛ إذا كانت إصلاحات قديمة غير مسجلة بالنظام فلن تظهر هنا.</p>';
+  for(const col of sources){
+   try{
+    const snap=await db.collection(col).get();
+    snap.forEach(doc=>{
+     const d=doc.data()||{};
+     const hay=[d.clientName,d.customerName,d.name,d.phone,d.clientPhone,d.carPlate,d.plate,d.carInfo,d.invoiceSerial,d.invoiceNumber,d.carId]
+       .map(x=>norm(x)).join(' | ');
+     if(hay.includes(norm(rawQ)))records.push({source:col,id:doc.id,...d});
+    });
+   }catch(e){console.warn('تعذر قراءة '+col,e)}
+  }
+  const priority={'invoices_archive':3,'workshop_archive':2,'client_accounts':1};
+  const unique=new Map();
+  for(const r of records){
+   const invoice=val(r,['invoiceSerial','invoiceNumber','receiptNo','orderNo']);
+   const isInvoice=['invoices_archive','workshop_archive','client_accounts'].includes(r.source);
+   const key=isInvoice&&invoice?'invoice:'+norm(invoice):r.source+':'+r.id;
+   if(!unique.has(key)){unique.set(key,r);continue}
+   const old=unique.get(key);
+   unique.set(key,(priority[r.source]||0)>(priority[old.source]||0)?{...old,...r}:{...r,...old});
+  }
+  const rows=[...unique.values()];
+  const invoiceRows=rows.filter(r=>['invoices_archive','workshop_archive','client_accounts'].includes(r.source));
+  const getDate=r=>val(r,['dateFormatted','dateStr','invoiceDate','date','createdAt','timestamp','created_at']);
+  invoiceRows.sort((a,b)=>{const da=new Date(getDate(a)||0).getTime()||0,dbb=new Date(getDate(b)||0).getTime()||0;return dbb-da;});
+  if(!rows.length){out.innerHTML='<p style="text-align:center;padding:24px">لم يتم العثور على زيارات أو تعاملات مطابقة. جرّب الاسم الكامل أو رقم الهاتف المسجل.</p>';return}
+  const first=rows.find(r=>val(r,['clientName','customerName','name']))||rows[0];
+  const name=val(first,['clientName','customerName','name'])||rawQ;
+  const phone=val(first,['clientPhone','phone']);
+  const plates=[...new Set(rows.map(r=>val(r,['carPlate','plate','vehicleNumber'])).filter(Boolean))];
+  const total=invoiceRows.reduce((a,r)=>a+num(val(r,['totalAmount','grandTotal','total','totalSum','invoiceTotal'])),0);
+  const paid=invoiceRows.reduce((a,r)=>a+num(val(r,['paidAmount','amountPaid','paid','receivedAmount'])),0);
+  const remaining=invoiceRows.reduce((a,r)=>a+num(val(r,['remainingAmount','remaining','debt']) || (num(val(r,['totalAmount','grandTotal','total']))-num(val(r,['paidAmount','amountPaid'])))),0);
+  let html=`<style>
+   #clientLifeStatementContent .visit-profile{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+   #clientLifeStatementContent .visit-profile>div{background:#f8fafc;border:1px solid #dbe4ee;border-radius:11px;padding:12px}
+   #clientLifeStatementContent .visit-profile small{display:block;color:#64748b;margin-bottom:4px}
+   #clientLifeStatementContent .visit-profile b{font-size:15px;color:#173753}
+   #clientLifeStatementContent .visit-card{border:1px solid #cbd5e1;border-radius:14px;margin:14px 0;overflow:hidden;background:#fff;box-shadow:0 2px 8px #0f172a0a}
+   #clientLifeStatementContent .visit-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;background:#173753;color:white;padding:12px 15px}
+   #clientLifeStatementContent .visit-head strong{font-size:16px}
+   #clientLifeStatementContent .visit-body{padding:14px}
+   #clientLifeStatementContent .visit-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:12px}
+   #clientLifeStatementContent .visit-meta>div{background:#f1f5f9;border-radius:9px;padding:9px}
+   #clientLifeStatementContent .visit-meta small{display:block;color:#64748b;font-size:11px}
+   #clientLifeStatementContent .visit-items{display:grid;gap:6px}
+   #clientLifeStatementContent .visit-item{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fbfdff}
+   #clientLifeStatementContent .visit-item small{display:block;color:#64748b;margin-top:3px}
+   #clientLifeStatementContent .visit-finance{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+   #clientLifeStatementContent .visit-finance span{padding:8px 11px;border-radius:8px;background:#eef2f7;font-weight:bold}
+   #clientLifeStatementContent .visit-muted{color:#94a3b8}
+   @media(max-width:600px){#clientLifeStatementContent .visit-head{align-items:flex-start}}
+   body.dark-mode #clientLifeStatementContent .visit-card,body.dark-mode #clientLifeStatementContent .visit-profile>div,body.dark-mode #clientLifeStatementContent .visit-meta>div,body.dark-mode #clientLifeStatementContent .visit-item{background:#152638;color:#e5edf6;border-color:#354a60}
+  </style>
+  <section class="client-ledger-section"><h3 style="margin:0 0 12px;color:#173753">بيانات العميل وملخص التعاملات</h3>
+   <div class="visit-profile">
+    <div><small>اسم العميل</small><b>${esc(name)}</b></div>
+    <div><small>رقم الهاتف</small><b>${esc(phone||'غير مسجل')}</b></div>
+    <div><small>السيارات / اللوحات</small><b>${esc(plates.join('، ')||'غير مسجل')}</b></div>
+    <div><small>عدد الزيارات المسجلة</small><b>${invoiceRows.length}</b></div>
+    <div><small>إجمالي الفواتير</small><b>${money(total)}</b></div>
+    <div><small>إجمالي المدفوع</small><b>${money(paid)}</b></div>
+    <div><small>إجمالي المتبقي</small><b>${money(remaining)}</b></div>
+   </div>
+  </section>
+  <section class="client-ledger-section"><h3 style="margin:0 0 4px;color:#173753">كشف تفصيلي بكل الزيارات</h3><p style="color:#64748b;margin:0 0 10px">كل زيارة معروضة بشكل مستقل، من الأحدث إلى الأقدم، مع بيانات السيارة والأصناف والخدمات والحساب.</p>`;
+  if(!invoiceRows.length)html+='<p>لا توجد فواتير أو زيارات مسجلة للعميل ضمن البيانات المتاحة.</p>';
+  invoiceRows.forEach((d,i)=>{
+   const invoice=val(d,['invoiceSerial','invoiceNumber','orderNo','id'])||'غير محدد';
+   const car=val(d,['carInfo','carPlate','plate','vehicle','carName'])||'غير مسجل';
+   const parts=val(d,['parts','partNames','items','products','spareParts','invoiceItems']);
+   const services=val(d,['services','serviceNames','repairDetails','repairs','workDescription','description','maintenance']);
+   const totalRow=num(val(d,['totalAmount','grandTotal','total','totalSum','invoiceTotal']));
+   const paidRow=num(val(d,['paidAmount','amountPaid','paid','receivedAmount']));
+   const remRaw=val(d,['remainingAmount','remaining','debt']);
+   const remRow=remRaw!==''?num(remRaw):Math.max(0,totalRow-paidRow);
+   const discount=num(val(d,['discount','discountAmount','invoiceDiscount']));
+   const labor=num(val(d,['laborCost','workCost','craftsmanship','serviceCost']));
+   const notes=val(d,['notes','managerDiscountReason','remarks','comment'])||'لا توجد ملاحظات';
+   html+=`<article class="visit-card">
+    <div class="visit-head"><strong>الزيارة رقم ${invoice}</strong><span>${esc(dateText(getDate(d)))}</span></div>
+    <div class="visit-body">
+     <div class="visit-meta">
+      <div><small>رقم الفاتورة / أمر الشغل</small><b>${esc(invoice)}</b></div>
+      <div><small>السيارة / رقم اللوحة</small><b>${esc(car)}</b></div>
+      <div><small>القسم / نوع الخدمة</small><b>${esc(val(d,['department','section','serviceType','workType'])||'صيانة / خدمة')}</b></div>
+      <div><small>الفني / المسؤول</small><b>${esc(val(d,['technicianName','workerName','employeeName','mechanicName'])||'غير مسجل')}</b></div>
+     </div>
+     <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+      <div><b>قطع الغيار والأصناف</b>${renderItems(parts)}</div>
+      <div><b>الخدمات والإصلاحات</b>${renderItems(services)}</div>
+     </div>
+     <div class="visit-finance">
+      <span>الإجمالي: ${money(totalRow)}</span><span>الخصم: ${money(discount)}</span><span>المصنعية: ${money(labor)}</span>
+      <span>المدفوع: ${money(paidRow)}</span><span style="color:${remRow>0?'#b91c1c':'#15803d'}">المتبقي: ${money(remRow)}</span>
+     </div>
+     <p style="margin:12px 0 0"><b>ملاحظات الزيارة:</b> ${esc(notes)}</p>
+    </div>
+   </article>`;
+  });
+  html+='</section>';
+  const other=rows.filter(r=>!['invoices_archive','workshop_archive','client_accounts'].includes(r.source));
+  if(other.length){
+   html+='<section class="client-ledger-section"><h3 style="margin:0 0 8px;color:#173753">التحصيلات والدفعات والاستردادات الأخرى</h3><div class="table-responsive"><table><thead><tr><th>م</th><th>التاريخ</th><th>نوع الحركة</th><th>رقم المرجع</th><th>البيان</th><th>المبلغ</th><th>ملاحظات</th></tr></thead><tbody>';
+   other.sort((a,b)=>(new Date(getDate(b)||0).getTime()||0)-(new Date(getDate(a)||0).getTime()||0));
+   other.forEach((d,i)=>{
+    const amount=num(val(d,['amount','paidAmount','paymentAmount','refundedAmount','totalAmount','value']));
+    const sourceNames={client_collection_receipts:'إيصال تحصيل',client_advance_payments:'دفعة مقدمة',client_advance_refunds:'استرداد دفعة',treasury_transactions:'حركة خزينة',cars:'بيانات سيارة',accounting_queue:'حركة حسابية'};
+    html+=`<tr><td>${i+1}</td><td>${esc(dateText(getDate(d)))}</td><td>${esc(sourceNames[d.source]||d.source)}</td><td>${esc(val(d,['invoiceSerial','receiptNo','paymentId','id'])||'—')}</td><td>${esc(val(d,['description','type','notes','carInfo','reason','title'])||'—')}</td><td>${money(amount)}</td><td>${esc(val(d,['notes','status','method'])||'—')}</td></tr>`;
+   });
+   html+='</tbody></table></div></section>';
+  }
+  html+='<p style="margin-top:10px;color:#64748b;font-size:12px">يعرض الكشف الزيارات والحركات المسجلة فعلياً في قاعدة البيانات. تم منع تكرار الفاتورة عند ظهورها في أكثر من سجل، وقد تختلف التفاصيل المتاحة حسب البيانات المحفوظة لكل فاتورة.</p>';
   out.innerHTML=html;
- }catch(e){out.innerHTML='<p style="color:#b91c1c">تعذر تحميل كشف العميل: '+clientLifeEsc(e.message)+'</p>'}
+ }catch(e){out.innerHTML='<p style="color:#b91c1c">تعذر تحميل كشف الزيارات: '+clientLifeEsc(e.message)+'</p>'}
 }
 function printClientLifeStatement(){const content=document.getElementById('clientLifeStatementContent');if(!content||!content.innerText.trim()){alert('اعرض بيانات العميل أولاً قبل الطباعة');return}const w=window.open('','_blank','width=1100,height=800');if(!w){alert('اسمح بفتح النوافذ المنبثقة حتى تتمكن من الطباعة');return}w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف العميل</title><style>body{font-family:Tahoma,Arial;padding:20px;color:#111}h2{text-align:center}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #777;padding:6px;text-align:right;vertical-align:top;word-break:break-word}th{background:#eee}.card-box{border:1px solid #aaa;padding:10px;margin-bottom:12px}.table-responsive{overflow:visible}small{font-size:10px}@page{size:A4 landscape;margin:10mm}</style></head><body><h2>مركز أوتو نون — كشف العميل</h2><div id="clientStatementQr" style="width:105px;height:105px;margin:8px auto"></div>${content.innerHTML}
 \n
@@ -6796,7 +7008,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
 <div class="sales-daily-columns">
 <section class="sales-daily-side sales-daily-left"><h3>الأرباح والتكاليف</h3>
 <div class="sales-daily-stats-row sales-daily-left-row-one"><div class="card-box sales-daily-total-stat" data-sales-detail="discount" id="salesDailyDiscountCard" onclick="salesDailyShowDetail('discount')" role="button" tabindex="0"><small>خصومات الفواتير</small><div id="salesDailyDiscountTotal" style="font-size:18px;font-weight:900">0</div></div><div class="card-box sales-daily-total-stat" data-sales-detail="expenses" onclick="salesDailyShowDetail('expenses')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('expenses')}" role="button" tabindex="0"><small>مصروفات الفترة</small><div id="salesDailyExpensesTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="net" onclick="salesDailyShowDetail('net')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('net')}" role="button" tabindex="0"><small>صافي الربح بعد المصروفات</small><div id="salesDailyNetProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="netGoodsAfterSupplier" onclick="salesDailyShowDetail('netGoodsAfterSupplier')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('netGoodsAfterSupplier')}" role="button" tabindex="0"><small>صافي مال البضاعة بعد المورد</small><div id="salesDailyNetGoodsAfterSupplier" style="font-size:18px;font-weight:900">0</div><em>مال البضاعة بعد الأجل − دفع تسديد مورد</em></div></div>
-<div class="sales-daily-stats-row sales-daily-left-row-two"><div class="card-box sales-daily-profit-stat" data-sales-detail="partsProfit" onclick="salesDailyShowDetail('partsProfit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('partsProfit')}" role="button" tabindex="0"><small>ربح قطع الغيار (حسب سعر شراء)</small><div id="salesDailyPartsProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="labor" onclick="salesDailyShowDetail('labor')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('labor')}" role="button" tabindex="0"><small>مصنعية التركيب</small><div id="salesDailyInstallationLabor" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="services" onclick="salesDailyShowDetail('services')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('services')}" role="button" tabindex="0"><small>إجمالي الخدمات</small><div id="salesDailyServicesProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-equation" data-sales-detail="equation" id="salesDailyEquationCard" onclick="salesDailyShowDetail('equation')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('equation')}" role="button" tabindex="0"><small>معادلة</small><div id="salesDailyEquation" style="font-size:18px;font-weight:900">0</div><em>مال البضاعة بعد الأجل − إجمالي الربح شامل المصنعية والخدمات</em></div></div><div class="sales-daily-stats-row sales-daily-left-row-three" id="salesDailyGrossRow"><div class="card-box sales-daily-profit-stat" data-sales-detail="gross" onclick="salesDailyShowDetail('gross')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('gross')}" role="button" tabindex="0"><small>إجمالي الربح شامل المصنعية والخدمات</small><div id="salesDailyGross" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div></section>
+<div class="sales-daily-stats-row sales-daily-left-row-two"><div class="card-box sales-daily-profit-stat" data-sales-detail="partsProfit" onclick="salesDailyShowDetail('partsProfit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('partsProfit')}" role="button" tabindex="0"><small>ربح قطع الغيار (حسب سعر شراء)</small><div id="salesDailyPartsProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="labor" onclick="salesDailyShowDetail('labor')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('labor')}" role="button" tabindex="0"><small>مصنعية التركيب</small><div id="salesDailyInstallationLabor" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="services" onclick="salesDailyShowDetail('services')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('services')}" role="button" tabindex="0"><small>إجمالي الخدمات</small><div id="salesDailyServicesProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><!-- تم حذف كارت المعادلة حسب طلب الإدارة --></div><div class="sales-daily-stats-row sales-daily-left-row-three" id="salesDailyGrossRow"><div class="card-box sales-daily-profit-stat" data-sales-detail="gross" onclick="salesDailyShowDetail('gross')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('gross')}" role="button" tabindex="0"><small>إجمالي الربح شامل المصنعية والخدمات</small><div id="salesDailyGross" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div></section>
 <section class="sales-daily-side sales-daily-right"><h3>المبيعات والتحصيلات</h3>
 <div class="sales-daily-stats-row sales-daily-right-row-one"><div class="card-box sales-daily-total-stat" data-sales-detail="sales" onclick="salesDailyShowDetail('sales')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('sales')}" role="button" tabindex="0"><small>إجمالي الفواتير</small><div id="salesDailyTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="transfers" onclick="salesDailyShowDetail('transfers')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('transfers')}" role="button" tabindex="0"><small>إجمالي التحويلات</small><div id="salesDailyTransfersTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="advance" onclick="salesDailyShowDetail('advance')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('advance')}" role="button" tabindex="0"><small>إجمالي المقدم</small><div id="salesDailyAdvanceTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-paid-stat" data-sales-detail="paid" onclick="salesDailyShowDetail('paid')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('paid')}" role="button" tabindex="0"><small>إجمالي المدفوع</small><div id="salesDailyPaid" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div>
 <div class="sales-daily-stats-row sales-daily-right-row-two"><div class="card-box sales-daily-derived" data-sales-detail="goodsAfterDue" onclick="salesDailyShowDetail('goodsAfterDue')" role="button" tabindex="0"><small>مال البضاعة بعد الأجل</small><div id="salesDailyGoodsAfterDue" style="font-size:18px;font-weight:900">0</div><em>سعر مال البضاعة − إجمالي الأجل</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="remaining" onclick="salesDailyShowDetail('remaining')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('remaining')}" role="button" tabindex="0"><small>إجمالي الأجل</small><div id="salesDailyRemaining" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="goods" onclick="salesDailyShowDetail('goods')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('goods')}" role="button" tabindex="0"><small>إجمالي سعر مال البضاعة</small><div id="salesDailyGoodsValue" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="count" onclick="salesDailyShowDetail('count')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('count')}" role="button" tabindex="0"><small>عدد الفواتير</small><div id="salesDailyCount" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="collections" onclick="salesDailyShowDetail('collections')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('collections')}" role="button" tabindex="0"><small>تحصيلات مديونيات سابقة</small><div id="salesDailyCollectionsTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="supplier" onclick="salesDailyShowDetail('supplier')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('supplier')}" role="button" tabindex="0"><small>دفع تسديد مورد</small><div id="salesDailySupplierPaymentsTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div></section></div>
