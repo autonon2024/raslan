@@ -114,7 +114,7 @@ body.dept-quick_maintenance .department-identity small {display:block;color:#fff
 <div style="display:flex;gap:7px;flex-wrap:wrap">
 <a class="gray" href="diagnosis(2).html">العودة للتشخيص</a>
 <button class="gray" onclick="toggleDarkMode()">الوضع الليلي</button>
-<button class="blue" onclick="loadCars()">تحديث</button></div></header>
+<button class="blue" onclick="refreshDepartmentPage()"><i class="fa-solid fa-rotate"></i> تحديث الصفحة</button></div></header>
 <div class="department-identity"><span class="identity-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><div><b>مركز أوتو نون NON — الصيانة السريعة</b><small>لوحة متابعة الأعمال والسيارات والخدمات الخاصة بالقسم</small></div></div>
 <div class="stats"><div class="stat">سيارات بالقسم<b id="total">0</b></div><div class="stat">قيد التنفيذ<b id="working">0</b></div><div class="stat">بانتظار البدء<b id="waiting">0</b></div></div>
 <div class="grid">
@@ -174,6 +174,17 @@ function mediaPageUrl(){return selected?new URL("quick_maintenance_media.html?ca
 function openPhotoDataPage(){if(!selected)return alert("اختر سيارة أولاً.");window.open(mediaPageUrl(),"_blank")}
 function sendPhotoPageWhatsAppLink(){if(!selected)return alert("اختر سيارة أولاً.");const c=cars.find(x=>x.id===selected);let p=String(c?.phone||c?.clientPhone||"").replace(/\D/g,"");if(p.startsWith("0"))p="2"+p;else if(p.startsWith("1")&&p.length===10)p="20"+p;if(!p)return alert("رقم الهاتف غير مسجل.");window.open("https://wa.me/"+p+"?text="+encodeURIComponent("ملف صور وبيانات سيارتكم من مركز أوتو نون (NON):\\n"+mediaPageUrl()),"_blank")}
 
+async function refreshDepartmentPage(){
+  const btn=window.event && window.event.currentTarget;
+  if(btn){btn.disabled=true;btn.textContent="جاري التحديث...";}
+  try{
+    const snap=await db.collection("cars").get();
+    cars=[];snap.forEach(d=>{const c={id:d.id,...d.data()};if(c.targetDepartment==="quick_maintenance"&&!["COMPLETED","ARCHIVED","PAID_AWAITING_DELIVERY"].includes(c.status))cars.push(c);});
+    render();
+    if(selected){const fresh=cars.find(c=>c.id===selected);if(fresh)show(fresh);else clearDetails();}
+  }catch(e){alert("تعذر تحديث البيانات: "+e.message);}
+  finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate"></i> تحديث الصفحة';}}
+}
 function loadCars(){
  if(carsUnsubscribe)carsUnsubscribe();
  carsUnsubscribe=db.collection("cars").onSnapshot(s=>{
@@ -184,7 +195,10 @@ function loadCars(){
 function render(){const q=(document.getElementById("search").value||"").toLowerCase();const filtered=cars.filter(c=>[c.clientName,c.name,c.plate,c.carPlate,c.brand,c.model,c.serviceType,c.queueNo].join(" ").toLowerCase().includes(q));document.getElementById("total").textContent=cars.length;document.getElementById("working").textContent=cars.filter(c=>c.status==="IN_PROGRESS").length;document.getElementById("waiting").textContent=cars.filter(c=>c.status!=="IN_PROGRESS").length;document.getElementById("list").innerHTML=filtered.length?filtered.map(c=>`<div class="car ${selected===c.id?"active":""}" onclick="choose('${c.id}')"><b>${esc(c.clientName||c.name||"عميل")} — ${esc((c.brand||"")+" "+(c.model||""))}</b><div class="muted">اللوحة: ${esc(c.plate||c.carPlate||"—")} | الدور: ${esc(c.queueNo||"—")}</div><div class="muted">الخدمة: ${esc(c.serviceType||"غير محددة")}</div>
 <div class="muted">الكوريك: ${esc(c.assignedLift||c.liftName||c.liftNumber||c.lift||"غير محدد")} | الفني: ${esc(c.activeTechnician||c.assignedTechnician||c.quickMaintenanceTechnician||"لم يبدأ")}</div>
 ${c.claimedByUser && c.claimedByUser!==tech() ? `<b style="color:#dc2626">🔒 محجوز للفني ${esc(c.claimedByUser)}</b>` : ''}<b class="muted">${esc(c.statusLabel||"محولة للقسم")}</b></div>`).join(""):'<div class="empty">لا توجد سيارات محولة إلى الصيانة السريعة حالياً.</div>'}
-function choose(id){const c=cars.find(x=>x.id===id);if(c?.claimedByUser && c.claimedByUser!==tech()){alert("السيارة محجوزة بالفعل للفني: "+c.claimedByUser);return;}selected=id;if(c)show(c);render()}
+async function choose(id){
+ localStorage.setItem('non_quick_maintenance_selected_car', id);
+ try{const snap=await db.collection("cars").doc(id).get();if(snap.exists){const fresh={id:snap.id,...snap.data()};const i=cars.findIndex(x=>x.id===id);if(i>=0)cars[i]=fresh;else cars.push(fresh);}}catch(e){console.warn("تعذر تحديث بيانات السيارة:",e);}
+ const c=cars.find(x=>x.id===id);if(c?.claimedByUser && c.claimedByUser!==tech()){alert("السيارة محجوزة بالفعل للفني: "+c.claimedByUser);return;}selected=id;if(c)show(c);render()}
 function show(c){document.getElementById("empty").hidden=true;document.getElementById("details").hidden=false;const vals={client:c.clientName||c.name||"—",phone:c.phone||c.clientPhone||"—",vehicle:((c.brand||"")+" "+(c.model||"")).trim()||c.carInfo||"—",plate:c.plate||c.carPlate||"—",queue:c.queueNo||"—",odo:c.currentOdo?c.currentOdo+" كم":"—",service:c.serviceType||"—",status:c.statusLabel||c.status||"—",complaint:c.receptionComplaint||c.complaint||"—",diagnosis:c.diagnosisDetails||"—"};Object.entries(vals).forEach(([k,v])=>document.getElementById(k).textContent=v);document.getElementById("notes").value=c.quickMaintenanceNotes||"";
  beforePhotos=c.quickMaintenanceBeforePhotos||[];afterPhotos=c.quickMaintenanceAfterPhotos||[];extraPhotos=c.quickMaintenanceAttachments||[];
  renderQuickPhotos();
