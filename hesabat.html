@@ -1380,6 +1380,18 @@ body.dark-mode{background:#0b1420!important;color:#e5edf6!important}body.dark-mo
 #salesDailyModal .sales-daily-left-row-three>.card-box{width:100%!important;}
 @media(max-width:760px){#salesDailyModal .sales-daily-grand-head{grid-template-columns:repeat(2,minmax(0,1fr))!important;}#salesDailyModal .sales-daily-left-row-two{grid-template-columns:repeat(2,minmax(0,1fr))!important;}}
 </style>
+<style id="sales-daily-balanced-grid-layout">
+/* توحيد بطاقات يومية البيع في شبكة واحدة لملء المساحة دون فراغات بين الجانبين. */
+#salesDailyModal .sales-daily-columns{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;align-items:stretch!important}
+#salesDailyModal .sales-daily-side{display:contents!important}
+#salesDailyModal .sales-daily-side>h3{grid-column:1/-1!important;margin:4px 0 0!important}
+#salesDailyModal .sales-daily-stats-row{display:contents!important}
+#salesDailyModal .sales-daily-stats-row>.card-box{min-width:0!important;width:auto!important;min-height:104px!important;margin:0!important;padding:11px 8px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;text-align:center!important}
+#salesDailyModal .sales-daily-stats-row>.card-box em{margin-top:5px!important}
+@media(max-width:900px){#salesDailyModal .sales-daily-columns{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:520px){#salesDailyModal .sales-daily-columns{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}#salesDailyModal .sales-daily-stats-row>.card-box{min-height:96px!important}}
+@media print{#salesDailyModal .sales-daily-columns{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+</style>
 <style id="client-ledger-professional-style">
 #clientAccountsModal table{min-width:850px}
 #clientAccountsModal th,#clientAccountsModal td{vertical-align:middle}
@@ -6842,7 +6854,7 @@ function createClientSupplierHub(){
    const expenseTotal=expenseRows.reduce((a,x)=>a+(Number(x.amount??x.value??x.expenseAmount)||0),0);
    const netProfit=grossTotal-expenseTotal;
    const adjustedRemaining=Math.max(0,remaining-collectionTotal);
-   const cashTotal=Math.max(0,total-adjustedRemaining-advanceRefundTotal);
+   let cashTotal=Math.max(0,total-adjustedRemaining-advanceRefundTotal);
 
    const supplierRows=(()=>{try{return JSON.parse(localStorage.getItem('supplier_payment_archive')||'[]').filter(x=>{const raw=x.dateStr||x.date||x.createdAt||x.timestamp||'';const dt=new Date(raw);const day=!Number.isNaN(dt.getTime())?salesDailyLocalDate(dt):String(raw).slice(0,10);return(!from||!day||day>=from)&&(!to||!day||day<=to);});}catch(_){return[];}})();
    const details={count:[],sales:[],discount:[],transfers:[],cash:[],advance:[],goods:[],remaining:[],paid:[],treasury:[],collections:[],supplier:[],expenses:[],partsProfit:[],labor:[],services:[],gross:[],net:[],netGoodsAfterSupplier:[]};
@@ -6855,7 +6867,7 @@ function createClientSupplierHub(){
      // ربح قطع الغيار وإجمالي الربح بعد خصم العميل من ربح قطع الغيار فقط.
       const pp=Number(pd.partsProfit)||0,sp=Number(pd.servicesProfit)||0,g=Number(pd.gross)||0;
      const lp=(Array.isArray(d.requiredParts)?d.requiredParts:(Array.isArray(d.parts)?d.parts:[])).reduce((sum,it)=>sum+(Number(it.installationFee??it.laborFee??it.installationCost??0)||0),0);
-     const paymentMethod=String(d.method||d.paymentMethod||'');const explicitTransfer=Number(d.transferAmount??d.bankTransferAmount??d.transferPaid??d.paymentTransferAmount??d.cardAmount??0)||0;const transfer=explicitTransfer>0?explicitTransfer:(/تحويل|انستا|بطاقة|فيزا|ماستر/i.test(paymentMethod)?p:0);
+     const paymentMethod=String(d.method||d.paymentMethod||'');const splitTransfer=Number(d.transferPaidAmount??d.paymentBreakdown?.transfer??d.transferAmount??d.bankTransferAmount??d.transferPaid??d.paymentTransferAmount??d.cardAmount??0)||0;const splitCash=Number(d.cashPaidAmount??d.paymentBreakdown?.cash??0)||0;const hasSplitPayment=splitCash>0||splitTransfer>0;const transfer=hasSplitPayment?splitTransfer:(/تحويل|انستا|بطاقة|فيزا|ماستر/i.test(paymentMethod)?p:0);
      const desc=[d.carInfo||d.carPlate||'',d.repairDetails||'',d.notes||''].filter(Boolean).join(' — ')||'فاتورة بيع';
      const base={date:day,ref,name,description:desc};
      push('count',{...base,amount:1});push('sales',{...base,amount:sale,description:'إجمالي الفاتورة بعد الخصم'});push('discount',{...base,amount:discount,description:'خصم الفاتورة'});push('advance',{...base,amount:adv});
@@ -6874,7 +6886,9 @@ function createClientSupplierHub(){
    const treasuryGrandTotal=treasuryRows.reduce((sum,t)=>sum+(Number(t.balance)||0),0);
    treasuryRows.forEach(t=>details.treasury.push({date:'الرصيد الحالي',ref:t.id,name:t.name||'خزينة',description:'الرصيد شامل حركات الإيداع والصرف والتحويلات بين الخزائن',amount:Number(t.balance)||0}));
    const transferTotal=details.transfers.reduce((a,x)=>a+(Number(x.amount)||0),0);
-   details.cash=[{date:'إجمالي الفترة',ref:'—',name:'—',description:'إجمالي النقدي',amount:cashTotal}];
+   // في الدفع المختلط: يُسجل جزء التحويل في التحويلات فقط، ويُخصم من إجمالي النقدي.
+   cashTotal=Math.max(0,cashTotal-transferTotal);
+   details.cash=[{date:'إجمالي الفترة',ref:'—',name:'—',description:'إجمالي النقدي بعد فصل مبالغ التحويل',amount:cashTotal}];
    details.net=[{date:'إجمالي الفترة',ref:'—',name:'—',description:'إجمالي الربح شامل المصنعية والخدمات − مصروفات الفترة',amount:netProfit}];
    window.salesDailyCurrentDetails=details;
    const transferEl=document.getElementById('salesDailyTransfersTotal');if(transferEl)transferEl.textContent=transferTotal.toLocaleString('en-US')+' ';
@@ -7468,7 +7482,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
 <div class="sales-daily-stats-row sales-daily-left-row-one"><div class="card-box sales-daily-total-stat" data-sales-detail="discount" id="salesDailyDiscountCard" onclick="salesDailyShowDetail('discount')" role="button" tabindex="0"><small>خصومات الفواتير</small><div id="salesDailyDiscountTotal" style="font-size:18px;font-weight:900">0</div></div><div class="card-box sales-daily-total-stat" data-sales-detail="expenses" onclick="salesDailyShowDetail('expenses')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('expenses')}" role="button" tabindex="0"><small>مصروفات الفترة</small><div id="salesDailyExpensesTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="net" onclick="salesDailyShowDetail('net')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('net')}" role="button" tabindex="0"><small>صافي الربح بعد المصروفات</small><div id="salesDailyNetProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="netGoodsAfterSupplier" onclick="salesDailyShowDetail('netGoodsAfterSupplier')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('netGoodsAfterSupplier')}" role="button" tabindex="0"><small>صافي مال البضاعة بعد المورد</small><div id="salesDailyNetGoodsAfterSupplier" style="font-size:18px;font-weight:900">0</div><em>مال البضاعة بعد الأجل − دفع تسديد مورد</em></div></div>
 <div class="sales-daily-stats-row sales-daily-left-row-two"><div class="card-box sales-daily-profit-stat" data-sales-detail="partsProfit" onclick="salesDailyShowDetail('partsProfit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('partsProfit')}" role="button" tabindex="0"><small>ربح قطع الغيار (حسب سعر شراء)</small><div id="salesDailyPartsProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="labor" onclick="salesDailyShowDetail('labor')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('labor')}" role="button" tabindex="0"><small>مصنعية التركيب</small><div id="salesDailyInstallationLabor" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-profit-stat" data-sales-detail="services" onclick="salesDailyShowDetail('services')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('services')}" role="button" tabindex="0"><small>إجمالي الخدمات</small><div id="salesDailyServicesProfit" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><!-- تم حذف كارت المعادلة حسب طلب الإدارة --></div><div class="sales-daily-stats-row sales-daily-left-row-three" id="salesDailyGrossRow"><div class="card-box sales-daily-profit-stat" data-sales-detail="gross" onclick="salesDailyShowDetail('gross')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('gross')}" role="button" tabindex="0"><small>إجمالي الربح شامل المصنعية والخدمات</small><div id="salesDailyGross" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div></section>
 <section class="sales-daily-side sales-daily-right"><h3>المبيعات والتحصيلات</h3>
-<div class="sales-daily-stats-row sales-daily-right-row-one"><div class="card-box sales-daily-total-stat" data-sales-detail="sales" onclick="salesDailyShowDetail('sales')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('sales')}" role="button" tabindex="0"><small>إجمالي الفواتير</small><div id="salesDailyTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="transfers" onclick="salesDailyShowDetail('transfers')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('transfers')}" role="button" tabindex="0"><small>إجمالي التحويلات</small><div id="salesDailyTransfersTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="advance" onclick="salesDailyShowDetail('advance')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('advance')}" role="button" tabindex="0"><small>إجمالي المقدم</small><div id="salesDailyAdvanceTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-paid-stat" data-sales-detail="paid" onclick="salesDailyShowDetail('paid')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('paid')}" role="button" tabindex="0"><small>إجمالي المدفوع</small><div id="salesDailyPaid" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div>
+<div class="sales-daily-stats-row sales-daily-right-row-one"><div class="card-box sales-daily-total-stat" data-sales-detail="sales" onclick="salesDailyShowDetail('sales')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('sales')}" role="button" tabindex="0"><small>إجمالي الفواتير</small><div id="salesDailyTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="transfers" onclick="salesDailyShowDetail('transfers')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('transfers')}" role="button" tabindex="0"><small>إجمالي التحويلات</small><div id="salesDailyTransfersTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="cash" onclick="salesDailyShowDetail('cash')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('cash')}" role="button" tabindex="0"><small>إجمالي النقدي</small><div id="salesDailyCashTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="advance" onclick="salesDailyShowDetail('advance')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('advance')}" role="button" tabindex="0"><small>إجمالي المقدم</small><div id="salesDailyAdvanceTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-paid-stat" data-sales-detail="paid" onclick="salesDailyShowDetail('paid')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('paid')}" role="button" tabindex="0"><small>إجمالي المدفوع</small><div id="salesDailyPaid" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div>
 <div class="sales-daily-stats-row sales-daily-right-row-two"><div class="card-box sales-daily-derived" data-sales-detail="goodsAfterDue" onclick="salesDailyShowDetail('goodsAfterDue')" role="button" tabindex="0"><small>مال البضاعة بعد الأجل</small><div id="salesDailyGoodsAfterDue" style="font-size:18px;font-weight:900">0</div><em>سعر مال البضاعة − إجمالي الأجل</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="remaining" onclick="salesDailyShowDetail('remaining')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('remaining')}" role="button" tabindex="0"><small>إجمالي الأجل</small><div id="salesDailyRemaining" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="goods" onclick="salesDailyShowDetail('goods')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('goods')}" role="button" tabindex="0"><small>إجمالي سعر مال البضاعة</small><div id="salesDailyGoodsValue" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="count" onclick="salesDailyShowDetail('count')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('count')}" role="button" tabindex="0"><small>عدد الفواتير</small><div id="salesDailyCount" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="collections" onclick="salesDailyShowDetail('collections')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('collections')}" role="button" tabindex="0"><small>تحصيلات مديونيات سابقة</small><div id="salesDailyCollectionsTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div><div class="card-box sales-daily-total-stat" data-sales-detail="supplier" onclick="salesDailyShowDetail('supplier')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();salesDailyShowDetail('supplier')}" role="button" tabindex="0"><small>دفع تسديد مورد</small><div id="salesDailySupplierPaymentsTotal" style="font-size:18px;font-weight:900">0</div><em>اضغط لعرض البيان والطباعة</em></div></div></section></div>
 </div>
 <div class="table-responsive"><table style="min-width:900px;width:100%"><thead><tr><th>م</th><th>التاريخ</th><th>رقم الفاتورة</th><th>العميل</th><th>السيارة / اللوحة</th><th>البيان</th><th>إجمالي الفاتورة بعد الخصم</th><th>خصم الفاتورة</th><th>الدفعة المقدمة</th><th>ربح قطع الغيار</th><th>مصنعية التركيب</th><th>ربح الخدمات</th><th>إجمالي الربح شامل المصنعية</th><th>المدفوع</th><th>المتبقي</th></tr></thead><tbody id="salesDailyBody"><tr><td colspan="14">جاري التحميل...</td></tr></tbody></table></div>
@@ -7557,6 +7571,8 @@ function printClientLifeStatement(){const content=document.getElementById('clien
 <div class="card-box" style="margin:0;text-align:center"><b>التاريخ</b><input id="apTodayDatePicker" onchange="renderAccountsProfitSelectedDay()" style="display:block;width:100%;margin-top:5px;padding:7px;border:1px solid #aaa;border-radius:5px;font-weight:900" type="date"/></div>
 <div class="card-box" style="margin:0;text-align:center"><b>عدد فواتير اليوم</b><div id="apTodayInvoiceCount" style="font-size:20px;font-weight:900">0</div></div>
 <div class="card-box" style="margin:0;text-align:center"><b>مبيعات اليوم</b><div id="apTodaySales" style="font-size:20px;font-weight:900">0</div></div>
+<div class="card-box" style="margin:0;text-align:center"><b>إجمالي النقدي</b><div id="apTodayCash" style="font-size:20px;font-weight:900">0</div></div>
+<div class="card-box" style="margin:0;text-align:center"><b>إجمالي التحويلات</b><div id="apTodayTransfers" style="font-size:20px;font-weight:900">0</div></div>
 </div>
 <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
 <button class="btn-action btn-blue" onclick="editCurrentProfitDay()">تعديل الحالي</button>
@@ -8252,7 +8268,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
 #archiveModal #archiveTableBody td{visibility:visible!important;opacity:1!important}
 #accountsProfitsModal section h3{font-weight:900}
 #accountsProfitsModal #apTodayGross,#accountsProfitsModal #apTodayExpenses,#accountsProfitsModal #apTodayNet,
-#accountsProfitsModal #apTodayInvoiceCount,#accountsProfitsModal #apTodaySales,
+#accountsProfitsModal #apTodayInvoiceCount,#accountsProfitsModal #apTodaySales,#accountsProfitsModal #apTodayCash,
 #accountsProfitsModal #apDepositsTotal,#accountsProfitsModal #apWithdrawalsTotal,
 #accountsProfitsModal #apCurrentTreasuries,#accountsProfitsModal #apClientCredit,
 #accountsProfitsModal #apSupplierDebit,#accountsProfitsModal #apNetDebitCredit,
@@ -8804,12 +8820,25 @@ body.archive-invoice-print #printableInvoiceArea{
    const gross=inv.reduce((a,x)=>a+(window.accountsProfitCalculateInvoiceProfit?.(x)?.gross||0),0);
    const expense=exp.reduce((a,x)=>a+n(x.amount??x.value??x.expenseAmount),0);
    const sales=rangeSales(inv);
+   let cash=0, transfers=0;
+   inv.forEach(x=>{
+     const paid=n(x.paidAmount??x.paymentAmount??0);
+     const cashPart=n(x.cashPaidAmount??x.paymentBreakdown?.cash??0);
+     const transferPart=n(x.transferPaidAmount??x.paymentBreakdown?.transfer??x.transferAmount??x.bankTransferAmount??x.transferPaid??x.paymentTransferAmount??x.cardAmount??0);
+     const hasSplit=cashPart>0||transferPart>0;
+     const method=String(x.method||x.paymentMethod||'');
+     if(hasSplit){cash+=Math.max(0,cashPart);transfers+=Math.max(0,transferPart);}
+     else if(/تحويل|انستا|بطاقة|فيزا|ماستر/i.test(method)){transfers+=Math.max(0,paid);}
+     else{cash+=Math.max(0,paid);}
+   });
    if($('apTodayGross'))$('apTodayGross').textContent=fmt(gross);
    if($('apTodayExpenses'))$('apTodayExpenses').textContent=fmt(expense);
    if($('apTodayNet'))$('apTodayNet').textContent=fmt(gross-expense);
    if($('apTodayDatePicker'))$('apTodayDatePicker').value=day;
    if($('apTodayInvoiceCount'))$('apTodayInvoiceCount').textContent=String(inv.length);
    if($('apTodaySales'))$('apTodaySales').textContent=fmt(sales);
+   if($('apTodayCash'))$('apTodayCash').textContent=fmt(cash);
+   if($('apTodayTransfers'))$('apTodayTransfers').textContent=fmt(transfers);
    if($('apDailyStatus'))$('apDailyStatus').textContent='البيانات المعروضة حسب التاريخ المختار من فواتير ومصروفات يومية البيع. أزرار التقفيل تحفظ تقفيل اليوم الحالي.';
  }
  window.renderAccountsProfitSelectedDay=renderDay;
