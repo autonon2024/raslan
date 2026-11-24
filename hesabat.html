@@ -9084,23 +9084,7 @@ window.previewInvoiceSize=async function(){
    <section id="copy">${clone.outerHTML}</section></main>
    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener('load',function(){var q=document.getElementById('invoicePreviewQr');function draw(){if(q&&window.QRCode){q.innerHTML='';new QRCode(q,{text:${JSON.stringify('https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#')},width:100,height:100,correctLevel:QRCode.CorrectLevel?QRCode.CorrectLevel.M:0});}else if(q){q.textContent='QR غير متاح';}}if(window.QRCode)draw();else{var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';sc.onload=draw;sc.onerror=draw;document.head.appendChild(sc);}});<\/script>
 
-<script id="cashier-shift-treasury-auto-v1">
-(function(){
-  // عند الكاشير فقط: ترك اختيار الخزينة فارغاً يوجّه الحركة تلقائياً إلى خزينة الشيفت.
-  window.resolveCashierTreasuryId = function(selectId){
-    const select=document.getElementById(selectId);
-    const selected=String(select?.value||'').trim();
-    if(selected) return selected;
-    if(String(window.nonCurrentRole||'').toLowerCase()!=='cashier') return '';
-    const shiftId='shift_cashbox';
-    if(select){
-      const option=Array.from(select.options||[]).find(o=>String(o.value)===shiftId);
-      if(option) select.value=shiftId;
-    }
-    return shiftId;
-  };
-})();
-</script>
+
 </body></html>`);
    win.document.close();
  };
@@ -9602,3 +9586,20 @@ body.non-role-cashier .stat-mini-card:has(#statTreasuryTotal){display:none!impor
 })();
 </script>
 
+<script id="cashier-shift-treasury-auto-v1">
+(function(){
+  // عند الكاشير فقط: ترك اختيار الخزينة فارغاً يوجّه الحركة تلقائياً إلى خزينة الشيفت.
+  window.resolveCashierTreasuryId = function(selectId){
+    const select=document.getElementById(selectId);
+    const selected=String(select?.value||'').trim();
+    if(selected) return selected;
+    if(String(window.nonCurrentRole||'').toLowerCase()!=='cashier') return '';
+    const shiftId='shift_cashbox';
+    if(select){
+      const option=Array.from(select.options||[]).find(o=>String(o.value)===shiftId);
+      if(option) select.value=shiftId;
+    }
+    return shiftId;
+  };
+})();
+</script>
