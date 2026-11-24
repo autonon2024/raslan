@@ -3258,7 +3258,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
           return;
         }
       }
-      const targetTreasuryId = document.getElementById('targetTreasurySelect').value;
+      const targetTreasuryId = window.resolveCashierTreasuryId('targetTreasurySelect');
       const discount = parseFloat(document.getElementById('managerDiscountInput').value) || 0;
       const discountReason = document.getElementById('managerDiscountReason').value || '';
       const finalTotal = parseFloat(document.getElementById('grandTotalSum').textContent) || 0;
@@ -3269,7 +3269,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       const clientPhone = item.phone || item.clientPhone || '';
 
       if (paidAmount > 0 && !targetTreasuryId) {
-        alert("الرجاء تحديد الخزينة المراد إيداع المبلغ المدفوع فيها!");
+        alert("تعذر تحديد الخزينة. اختر خزينة أو ابدأ شيفت للكاشير.");
         return;
       }
 
@@ -3723,12 +3723,12 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       const carPlate = document.getElementById('qmCarPlate').value.trim() || 'بدون لوحة';
       const paymentMethod = document.getElementById('qmPaymentMethod').value;
       const isDeferredPayment = /آجل|اجل|على الحساب/.test(paymentMethod);
-      const targetTreasuryId = isDeferredPayment ? '' : document.getElementById('qmTargetTreasurySelect').value;
+      const targetTreasuryId = isDeferredPayment ? '' : window.resolveCashierTreasuryId('qmTargetTreasurySelect');
       const amountPaid = isDeferredPayment ? 0 : (parseFloat(document.getElementById('qmAmountPaid').value) || 0);
 
       const servicesArr = Object.values(selectedQuickServicesMap);
       if (servicesArr.length === 0) { alert("الرجاء اختيار خدمة صيانة سريعة واحدة على الأقل!"); return; }
-      if (amountPaid > 0 && !targetTreasuryId) { alert("الرجاء تحديد الخزينة المراد إيداع المبلغ فيها!"); return; }
+      if (amountPaid > 0 && !targetTreasuryId) { alert("تعذر تحديد الخزينة. اختر خزينة أو ابدأ شيفت للكاشير."); return; }
 
       let totalSum = 0;
       servicesArr.forEach(s => totalSum += (s.price * s.qty));
@@ -4335,7 +4335,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
     async function addExpenseRecord() {
       const title = document.getElementById('expenseTitleInput').value.trim();
       const amount = parseFloat(document.getElementById('expenseAmountInput').value) || 0;
-      const treasuryId = document.getElementById('expenseTreasurySelect').value;
+      const treasuryId = window.resolveCashierTreasuryId('expenseTreasurySelect');
       const notes = document.getElementById('expenseNotesInput').value.trim();
 
       if (!title || amount <= 0 || !treasuryId) {
@@ -4344,6 +4344,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       }
 
       const treasuryObj = treasuriesList.find(t => t.id === treasuryId);
+      if (!treasuryObj) { alert('الخزينة المحددة غير موجودة. حدّث قائمة الخزائن ثم أعد المحاولة.'); return; }
       if ((treasuryObj.balance || 0) < amount) {
         alert("❌ رصيد الخزينة المحددة لا يكفي لصرف هذا المبلغ!");
         return;
@@ -6252,7 +6253,7 @@ window.addEventListener('load', function () {
  let currentSupplierPayment=null;
  window.loadSupplierPaymentTreasuries=async function(){const sel=document.getElementById('accountSupplierTreasury');if(!sel)return;try{if(!window.db||typeof window.db.collection!=='function'){sel.innerHTML='<option value="">تعذر الاتصال بالخزائن</option>';return;}const snap=await window.db.collection('treasuries').get(),ts=[];snap.forEach(d=>ts.push({id:d.id,...d.data()}));sel.innerHTML='<option value="">اختر الخزينة للخصم</option>'+ts.map(t=>`<option value="${esc(t.id)}">${esc(t.name||'خزينة')} — الرصيد: ${money(t.balance||0)} </option>`).join('');}catch(e){sel.innerHTML='<option value="">تعذر تحميل الخزائن</option>';console.error(e);}};
  window.paySupplierFromAccounts=async function(mode='partial'){
- const s=selectedSupplier;if(!s){alert('ابحث عن المورد بالكود أو الاسم أولاً.');return;}if(s.active===false){alert('هذا الحساب مؤرشف ولا يمكن تسجيل دفعات جديدة عليه. يمكنك مراجعة كشف حسابه فقط.');return;}const t=supplierTotals(s),remaining=n(t.due),input=document.getElementById('accountSupplierPayment'),v=mode==='full'?remaining:Number(input?.value),treasuryId=document.getElementById('accountSupplierTreasury')?.value;
+ const s=selectedSupplier;if(!s){alert('ابحث عن المورد بالكود أو الاسم أولاً.');return;}if(s.active===false){alert('هذا الحساب مؤرشف ولا يمكن تسجيل دفعات جديدة عليه. يمكنك مراجعة كشف حسابه فقط.');return;}const t=supplierTotals(s),remaining=n(t.due),input=document.getElementById('accountSupplierPayment'),v=mode==='full'?remaining:Number(input?.value),treasuryId=window.resolveCashierTreasuryId('accountSupplierTreasury');
  if(!Number.isFinite(v)||v<=0||v>remaining){alert('أدخل مبلغًا صحيحًا لا يتجاوز إجمالي المبلغ المستحق على المورد.');return;}if(!treasuryId){alert('اختر الخزينة التي سيتم الخصم منها أولاً.');return;}if(!window.db||typeof window.db.collection!=='function'){alert('الاتصال بقاعدة بيانات الخزائن غير متاح.');return;}
  let waWindow=null; try { waWindow=window.open('about:blank','_blank'); } catch(_) {}
  try{const treasuryRef=window.db.collection('treasuries').doc(treasuryId),snap=await treasuryRef.get();if(!snap.exists){alert('الخزينة المحددة غير موجودة.');return;}const treasury=snap.data(),balance=n(treasury.balance);if(balance<v){alert('رصيد الخزينة غير كافٍ. الرصيد الحالي: '+money(balance)+' ');return;}
@@ -9082,6 +9083,24 @@ window.previewInvoiceSize=async function(){
    <div class="title">فاتورة صيانة وقطع غيار</div><div class="meta"><div><b>العميل:</b>${esc(data.customer)}</div><div><b>الهاتف:</b>${esc(data.phone)}</div><div><b>السيارة:</b>${esc(data.car)}</div><div><b>اللوحة:</b>${esc(data.plate)}</div><div><b>التاريخ:</b>${esc(data.date)}</div><div><b>مسؤول الحسابات:</b>${esc(data.cashier)}</div></div>
    <section id="copy">${clone.outerHTML}</section></main>
    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener('load',function(){var q=document.getElementById('invoicePreviewQr');function draw(){if(q&&window.QRCode){q.innerHTML='';new QRCode(q,{text:${JSON.stringify('https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#')},width:100,height:100,correctLevel:QRCode.CorrectLevel?QRCode.CorrectLevel.M:0});}else if(q){q.textContent='QR غير متاح';}}if(window.QRCode)draw();else{var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';sc.onload=draw;sc.onerror=draw;document.head.appendChild(sc);}});<\/script>
+
+<script id="cashier-shift-treasury-auto-v1">
+(function(){
+  // عند الكاشير فقط: ترك اختيار الخزينة فارغاً يوجّه الحركة تلقائياً إلى خزينة الشيفت.
+  window.resolveCashierTreasuryId = function(selectId){
+    const select=document.getElementById(selectId);
+    const selected=String(select?.value||'').trim();
+    if(selected) return selected;
+    if(String(window.nonCurrentRole||'').toLowerCase()!=='cashier') return '';
+    const shiftId='shift_cashbox';
+    if(select){
+      const option=Array.from(select.options||[]).find(o=>String(o.value)===shiftId);
+      if(option) select.value=shiftId;
+    }
+    return shiftId;
+  };
+})();
+</script>
 </body></html>`);
    win.document.close();
  };
