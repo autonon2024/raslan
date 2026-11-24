@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>إدارة المخزن وصرف قطع الغيار </title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
   <style>
@@ -296,7 +296,7 @@
     </div>
     <div class="non-nav-group"><button class="non-nav-btn" type="button"><i class="fa-solid fa-layer-group"></i><span>طلبات الأقسام</span><i class="fa-solid fa-chevron-down"></i></button><div class="non-nav-menu"><button id="deptRequestsMenuButton" onclick="nonNavigate('deptRequests')">رسائل طلبات الأقسام <span id="deptRequestsUnreadBadge" class="dept-unread-badge" style="display:none">0</span></button><button onclick="nonNavigate('returnsTableCard')">طلبات المرتجع والاستبدال</button></div></div>
     <div class="non-nav-group"><button class="non-nav-btn" type="button"><i class="fa-brands fa-whatsapp"></i><span>متابعة العملاء</span><i class="fa-solid fa-chevron-down"></i></button><div class="non-nav-menu"><button onclick="nonNavigate('reminders')">التذكيرات المستحقة</button><button onclick="showReminderArchive()">أرشيف المتابعة</button></div></div>
-    <a class="non-nav-btn non-supplier-nav-btn" href="supplier-management.html" title="فتح صفحة إدارة الموردين والتجار وربط المخزون"><i class="fa-solid fa-truck-field"></i><span>إدارة الموردين والتجار وربط المخزون</span></a>
+    <a class="non-nav-btn non-supplier-nav-btn" href="supplier-management-updated.html" title="فتح صفحة إدارة الموردين والتجار وربط المخزون"><i class="fa-solid fa-truck-field"></i><span>إدارة الموردين والتجار وربط المخزون</span></a>
     <button class="non-nav-btn" onclick="nonNavigate('accounts',this)"><i class="fa-solid fa-calculator"></i><span>الحسابات</span></button>
     <button class="non-nav-btn" onclick="nonNavigate('services',this)"><i class="fa-solid fa-screwdriver-wrench"></i><span>عرض الخدمات</span></button>
   </nav>
@@ -494,9 +494,9 @@
             <label class="btn-action-sm btn-excel" style="cursor:pointer;"><i class="fa-solid fa-file-excel"></i> استيراد إكسل <input type="file" id="excelImportInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importInventoryFromExcel(event)"></label>
             <button class="btn-action-sm btn-danger global-delete-btn" id="btnDeleteInv" onclick="deleteSelectedItemsGeneric('inventory')"><i class="fa-solid fa-trash"></i> حذف المحدد</button>
             <button class="btn-action-sm btn-gold" onclick="filterShortagesOnly()"><i class="fa-solid fa-triangle-exclamation"></i> النواقص (<span id="shortageBadgeCount">0</span>)</button>
-            <button class="btn-action-sm btn-excel" onclick="exportTableToExcel('#inventoryTable', 'Inventory_NON.xlsx')"><i class="fa-solid fa-file-excel"></i> Excel</button>
-            <button class="btn-action-sm btn-blue" type="button" onclick="exportWarehouseBackup()"><i class="fa-solid fa-download"></i> تصدير نسخة المخزن</button>
-            <label class="btn-action-sm btn-success" style="cursor:pointer;"><i class="fa-solid fa-upload"></i> استيراد نسخة المخزن <input type="file" id="warehouseBackupImport" accept=".json,application/json" hidden onchange="importWarehouseBackup(event)"></label>
+            <button class="btn-action-sm btn-blue" type="button" onclick="exportWarehouseBackup()"><i class="fa-solid fa-download"></i> تصدير نسخة المخزن JSON</button>
+            <button class="btn-action-sm btn-excel" type="button" onclick="exportWarehouseBackupExcel()"><i class="fa-solid fa-file-excel"></i> تصدير نسخة إكسيل</button>
+            <label class="btn-action-sm btn-success" style="cursor:pointer;"><i class="fa-solid fa-upload"></i> استيراد نسخة المخزن <input type="file" id="warehouseBackupImport" accept=".json,.xlsx,.xls,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onchange="importWarehouseBackup(event)"></label>
           </div>
         </div>
         <div id="inventorySearchFilters" class="form-field" style="margin-bottom:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px">
@@ -520,7 +520,6 @@
           <span><i class="fa-solid fa-screwdriver-wrench"></i> إدارة وعرض خدمات التركيب</span>
           <div style="display:flex; gap:5px;">
             <button class="btn-action-sm btn-danger global-delete-btn" id="btnDeleteServices" onclick="deleteSelectedItemsGeneric('installation_services')"><i class="fa-solid fa-trash"></i> حذف المحدد</button>
-            <button class="btn-action-sm btn-excel" onclick="exportTableToExcel('#servicesTable', 'Installation_Services_NON.xlsx')"><i class="fa-solid fa-file-excel"></i> Excel</button>
           </div>
         </div>
         <div class="form-field" style="margin-bottom: 10px;"><input type="text" id="searchServicesInput" onkeyup="filterServicesTable()" placeholder="🔍 بحث عن خدمة..."></div>
@@ -538,7 +537,6 @@
           <div style="display:flex; gap:5px;">
             <button class="btn-action-sm btn-danger global-delete-btn" id="btnDeleteDept" onclick="deleteSelectedItemsGeneric('dept_requests')"><i class="fa-solid fa-trash"></i> حذف المحدد</button>
             <button class="btn-action-sm btn-blue" onclick="loadDeptRequests()">تحديث</button>
-            <button class="btn-action-sm btn-excel" onclick="exportTableToExcel('#deptRequestsTable', 'DeptRequests_NON.xlsx')">Excel</button>
           </div>
         </div>
         <div style="overflow-x: auto;">
@@ -587,7 +585,6 @@
           <span><i class="fa-solid fa-file-invoice"></i> أرشيف أذونات الصرف والاستبدال</span>
           <div style="display:flex; gap:5px;">
             <button class="btn-action-sm btn-danger global-delete-btn" id="btnDeleteIssue" onclick="deleteSelectedIssueOrders()"><i class="fa-solid fa-trash"></i> حذف المحدد</button>
-            <button class="btn-action-sm btn-excel" onclick="exportTableToExcel('#issueOrdersTable', 'IssueOrders_NON.xlsx')">Excel</button>
           </div>
         </div>
         <div class="form-field" style="margin-bottom: 10px;">
@@ -627,7 +624,6 @@
           <span><i class="fa-solid fa-rotate-left"></i> سجل المرتجعات والتالف (الحركات والهوالك)</span>
           <div style="display:flex; gap:5px;">
             <button class="btn-action-sm btn-danger global-delete-btn" id="btnDeleteReturns" onclick="deleteSelectedItemsGeneric('returns_log')"><i class="fa-solid fa-trash"></i> حذف المحدد</button>
-            <button class="btn-action-sm btn-excel" onclick="exportTableToExcel('#returnsTable', 'Returns_NON.xlsx')">Excel</button>
           </div>
         </div>
         <div style="overflow-x: auto;">
@@ -1050,44 +1046,171 @@
         alert('تم تجهيز النسخة الاحتياطية: ملف Excel وملف JSON. تم جلب مجموعات البيانات المعروفة من السيرفر عند الاتصال، مع بيانات التخزين المحلي.');
       } catch(err) { console.error(err); alert('تعذر إنشاء النسخة الاحتياطية: '+(err.message||err)); }
     }
-    function exportWarehouseBackup() {
+    async function getWarehouseBackupData() {
       const keys = ['inventory','inventory_categories','stores_list','suppliers_list','supplier_issue_orders','supplier_ledger','supplier_returns','returns_log','issue_orders','dept_requests'];
-      const data = { type:'AutoNon_Warehouse_Backup', version:1, createdAt:new Date().toISOString(), data:{} };
-      keys.forEach(key => { try { data.data[key] = JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) { data.data[key] = []; } });
-      // Include the currently cached inventory as a safety net when data is loaded from Firestore.
-      if (Array.isArray(cachedInventory) && cachedInventory.length) data.data.inventory = cachedInventory;
-      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json;charset=utf-8'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href=url; a.download=`AutoNon_Warehouse_Backup_${new Date().toISOString().slice(0,10)}.json`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      alert('تم تصدير نسخة احتياطية من بيانات المخزن بنجاح.');
+      const data = {};
+      keys.forEach(key => {
+        try { data[key] = JSON.parse(localStorage.getItem(key) || '[]'); }
+        catch (_) { data[key] = []; }
+      });
+      // بيانات الأصناف الحية من Firestore هي المرجع عند الاتصال.
+      if (!useLocalFallback && db) {
+        try {
+          const snap = await db.collection('inventory').get();
+          data.inventory = snap.docs.map(doc => ({id:doc.id, ...doc.data()}));
+        } catch (err) {
+          console.warn('تعذر جلب أصناف المخزن من السيرفر، سيتم استخدام البيانات المحملة محلياً.', err);
+          if (Array.isArray(cachedInventory)) data.inventory = cachedInventory;
+        }
+      } else if (Array.isArray(cachedInventory) && cachedInventory.length) {
+        data.inventory = cachedInventory;
+      }
+      // الأقسام والمخازن والفروع المستخرجة من بيانات الأصناف لضمان عدم فقدها.
+      const unique = values => [...new Set(values.map(v => String(v || '').trim()).filter(Boolean))];
+      data.inventory_categories = unique([...(data.inventory_categories || []), ...(data.inventory || []).map(x => x.category)]);
+      data.stores_list = unique([...(data.stores_list || []), ...(data.inventory || []).map(x => x.storeName)]);
+      data.branches_list = unique([...(data.inventory || []).map(x => x.brand || x.branch)]);
+      return data;
+    }
+
+    function exportWarehouseBackup() {
+      (async () => {
+        try {
+          const data = await getWarehouseBackupData();
+          const backup = {type:'AutoNon_Warehouse_Backup',version:2,createdAt:new Date().toISOString(),data};
+          const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json;charset=utf-8'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href=url; a.download=`AutoNon_Warehouse_Backup_${new Date().toISOString().slice(0,10)}.json`;
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+          alert('تم تصدير نسخة المخزن الاحتياطية بالأصناف والكميات والأسعار والأقسام والفروع.');
+        } catch(err) {
+          console.error(err); alert('تعذر تصدير نسخة المخزن: '+(err.message||err));
+        }
+      })();
+    }
+
+    async function exportWarehouseBackupExcel() {
+      try {
+        if (!window.XLSX) throw new Error('مكتبة Excel غير متاحة. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
+        const data = await getWarehouseBackupData();
+        const headers = ['المخزن','القسم','اسم الصنف','الفرع','المورد','الباركود','الكمية','سعر الشراء','سعر البيع','مصنعية','الصلاحية','بلد المنشأة'];
+        const rows = (data.inventory || []).map(x => ({
+          'المخزن': x.storeName || 'مخزن المحل الرئيسي',
+          'القسم': x.category || '',
+          'اسم الصنف': x.name || x.itemName || '',
+          'الفرع': x.brand || x.branch || '',
+          'المورد': x.supplierName || '',
+          'الباركود': x.barcode || x.code || '',
+          'الكمية': Number(x.qty || 0),
+          'سعر الشراء': Number(x.buyPrice || 0),
+          'سعر البيع': Number(x.sellPrice || 0),
+          'مصنعية': Number(x.installationFee || 0),
+          'الصلاحية': x.kmValidity ?? x.expiryDate ?? '',
+          'بلد المنشأة': x.origin || ''
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows, {header: headers});
+        ws['!cols'] = [
+          {wch:22},{wch:20},{wch:32},{wch:22},{wch:24},{wch:20},
+          {wch:13},{wch:16},{wch:16},{wch:15},{wch:18},{wch:22}
+        ];
+        ws['!rows'] = [{hpt:30}, ...rows.map(() => ({hpt:24}))];
+        ws['!autofilter'] = {ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(rows.length,1),c:headers.length-1}})};
+        ws['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+        const border = {top:{style:'thin',color:{rgb:'AAB7C4'}},bottom:{style:'thin',color:{rgb:'AAB7C4'}},left:{style:'thin',color:{rgb:'AAB7C4'}},right:{style:'thin',color:{rgb:'AAB7C4'}}};
+        for (let c=0;c<headers.length;c++) {
+          const ref=XLSX.utils.encode_cell({r:0,c});
+          if(ws[ref]) ws[ref].s={font:{name:'Arial',sz:12,bold:true,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'17365D'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border};
+        }
+        for(let r=1;r<=rows.length;r++) for(let c=0;c<headers.length;c++) {
+          const ref=XLSX.utils.encode_cell({r,c});
+          if(ws[ref]) ws[ref].s={font:{name:'Arial',sz:11,color:{rgb:'1F2937'}},fill:{patternType:'solid',fgColor:{rgb:r%2?'FFFFFF':'EEF3F8'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border,numFmt:[6,7,8,9].includes(c)?'#,##0.00':'General'};
+        }
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'أصناف المخزن');
+        const stamp = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, `AutoNon_Warehouse_Items_${stamp}.xlsx`);
+        alert('تم تصدير ملف الأصناف بالأعمدة المطلوبة مع تنسيق واضح وحدود للأعمدة وتوسيع المساحات.');
+      } catch(err) {
+        console.error(err); alert('تعذر تصدير نسخة Excel: '+(err.message||err));
+      }
     }
 
     async function importWarehouseBackup(event) {
-      const file = event.target.files && event.target.files[0]; if (!file) return;
-      if (!confirm('سيتم استبدال بيانات المخزن الحالية بالبيانات الموجودة في النسخة الاحتياطية. هل تريد المتابعة؟')) { event.target.value=''; return; }
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!confirm('سيتم استبدال بيانات المخزن الحالية بالبيانات الموجودة في ملف النسخة الاحتياطية. يُفضّل تصدير نسخة حالية قبل الاستيراد. هل تريد المتابعة؟')) {
+        event.target.value=''; return;
+      }
       try {
-        const content = JSON.parse(await file.text());
-        const payload = content.data || content;
-        const allowed = ['inventory','inventory_categories','stores_list','suppliers_list','supplier_issue_orders','supplier_ledger','supplier_returns','returns_log','issue_orders','dept_requests'];
-        if (!payload || !Array.isArray(payload.inventory)) throw new Error('ملف النسخة لا يحتوي على بيانات مخزن صحيحة');
+        let payload = {};
+        const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+        if (isExcel) {
+          if (!window.XLSX) throw new Error('مكتبة Excel غير متاحة.');
+          const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), {type:'array'});
+          const readSheet = names => {
+            const name = names.find(n => workbook.Sheets[n]);
+            return name ? XLSX.utils.sheet_to_json(workbook.Sheets[name], {defval:''}) : [];
+          };
+          const rows = readSheet(['أصناف المخزن','المخزن','Inventory','inventory']);
+          if (!rows.length) throw new Error('ملف Excel لا يحتوي على ورقة أصناف المخزن.');
+          payload.inventory = rows.map(row => ({
+            id:row['معرف الصنف'] || row.id || '',
+            storeName:row['المخزن'] || row.storeName || 'مخزن المحل الرئيسي',
+            category:row['القسم'] || row.category || 'عام',
+            name:row['اسم الصنف'] || row['الصنف'] || row.name || row.Item || '',
+            brand:row['الفرع / الماركة'] || row['الفرع'] || row.brand || row.branch || '',
+            supplierName:row['المورد'] || row.supplierName || '',
+            barcode:row['الباركود'] || row.barcode || row.Barcode || '',
+            qty:Number(row['الكمية'] ?? row.qty ?? row.Qty ?? 0) || 0,
+            minQty:Number(row['حد التنبيه'] ?? row.minQty ?? 0) || 0,
+            buyPrice:Number(row['سعر الشراء'] ?? row['شراء'] ?? row.buyPrice ?? 0) || 0,
+            sellPrice:Number(row['سعر البيع'] ?? row['بيع'] ?? row.sellPrice ?? 0) || 0,
+            installationFee:Number(row['المصنعية'] ?? row.installationFee ?? 0) || 0,
+            kmValidity:Number(row['صلاحية كم'] ?? row.kmValidity ?? 0) || 0,
+            withdrawCount:Number(row['عدد مرات السحب'] ?? row.withdrawCount ?? 0) || 0,
+            origin:row['بلد المنشأ'] || row.origin || ''
+          })).filter(x => x.name);
+          payload.inventory_categories = readSheet(['الأقسام','Categories']).map(x => x['القسم'] || x.category || x.name).filter(Boolean);
+          payload.stores_list = readSheet(['المخازن','Stores']).map(x => x['اسم المخزن'] || x['المخزن'] || x.name).filter(Boolean);
+          payload.branches_list = readSheet(['الفروع','Branches']).map(x => x['اسم الفرع / الماركة'] || x['الفرع'] || x.name).filter(Boolean);
+          payload.suppliers_list = readSheet(['الموردون','Suppliers']);
+        } else {
+          const content = JSON.parse(await file.text());
+          payload = content.data || content;
+          if (!payload || !Array.isArray(payload.inventory)) throw new Error('ملف النسخة لا يحتوي على بيانات مخزن صحيحة.');
+        }
+
+        if (!Array.isArray(payload.inventory) || !payload.inventory.length && !isExcel) throw new Error('قائمة أصناف المخزن غير صحيحة.');
+        const allowed = ['inventory_categories','stores_list','suppliers_list','supplier_issue_orders','supplier_ledger','supplier_returns','returns_log','issue_orders','dept_requests'];
         allowed.forEach(key => { if (Object.prototype.hasOwnProperty.call(payload,key)) localStorage.setItem(key, JSON.stringify(payload[key])); });
-        // عند الاتصال بفايربيس، استبدل مجموعة الأصناف السحابية أيضًا حتى لا تختفي البيانات بعد إعادة التحميل.
-        if (!useLocalFallback && db && Array.isArray(payload.inventory)) {
+        if (payload.branches_list) localStorage.setItem('branches_list', JSON.stringify(payload.branches_list));
+
+        if (!useLocalFallback && db) {
           const oldSnap = await db.collection('inventory').get();
           let batch = db.batch(), count = 0;
-          for (const doc of oldSnap.docs) { batch.delete(doc.ref); count++; if (count >= 400) { await batch.commit(); batch=db.batch(); count=0; } }
+          for (const doc of oldSnap.docs) {
+            batch.delete(doc.ref); count++;
+            if (count >= 400) { await batch.commit(); batch=db.batch(); count=0; }
+          }
           for (const item of payload.inventory) {
             const copy = {...item}; const id = copy.id; delete copy.id;
             const ref = id && !String(id).startsWith('local_') ? db.collection('inventory').doc(String(id)) : db.collection('inventory').doc();
-            batch.set(ref, copy); count++; if (count >= 400) { await batch.commit(); batch=db.batch(); count=0; }
+            batch.set(ref, copy); count++;
+            if (count >= 400) { await batch.commit(); batch=db.batch(); count=0; }
           }
           if (count) await batch.commit();
+        } else {
+          localStorage.setItem('inventory', JSON.stringify(payload.inventory.map((x,i)=>({...x,id:x.id || `local_import_${Date.now()}_${i}`}))));
         }
-        alert('تم استيراد نسخة المخزن بنجاح. سيتم تحديث الصفحة لعرض البيانات.');
+        alert(`تم استيراد النسخة بنجاح: ${payload.inventory.length} صنف. سيتم تحديث الصفحة لعرض الأصناف والأقسام والفروع والكميات والأسعار.`);
         location.reload();
-      } catch (err) { console.error(err); alert('تعذر استيراد النسخة. تأكد أن الملف نسخة احتياطية صحيحة بصيغة JSON.'); }
-      finally { event.target.value=''; }
+      } catch (err) {
+        console.error(err);
+        alert('تعذر استيراد النسخة: '+(err.message||'تأكد من صحة ملف JSON أو Excel.'));
+      } finally {
+        event.target.value='';
+      }
     }
 
     function downloadBlankVersion() {
@@ -1206,58 +1329,146 @@
 
     async function clearEntireInventoryWithPassword() {
       if(!verifyAdminPassword()) return;
-      if(!confirm("تحذير شامل: هل أنت متأكد من تفريغ كافة بضائع المخزن؟")) return;
-      localStorage.removeItem('inventory');
-      cachedInventory = [];
-      loadInventoryData();
-      alert("تم إفراغ المخزن بالكامل بنجاح!");
+      const total = Array.isArray(cachedInventory) ? cachedInventory.length : 0;
+      if(!confirm(`تحذير: سيتم حذف جميع أصناف المخزن نهائياً (${total} صنف ظاهر حالياً)، مع الإبقاء على الأقسام والمخازن والفروع والإعدادات. هل تريد المتابعة؟`)) return;
+      try {
+        if (!useLocalFallback && db) {
+          const snap = await db.collection('inventory').get();
+          let batch = db.batch(), count = 0;
+          for (const doc of snap.docs) {
+            batch.delete(doc.ref); count++;
+            if (count >= 400) { await batch.commit(); batch = db.batch(); count = 0; }
+          }
+          if (count) await batch.commit();
+        }
+        localStorage.removeItem('inventory');
+        cachedInventory = [];
+        await loadInventoryData();
+        alert('تم حذف جميع أصناف المخزن من قاعدة البيانات والجهاز بنجاح. الأقسام والمخازن والفروع لم يتم حذفها.');
+      } catch(err) {
+        console.error('Clear inventory failed:', err);
+        alert('تعذر حذف جميع أصناف المخزن: '+(err.message||err));
+      }
     }
 
     function importInventoryFromExcel(e) {
-      const file = e.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = async function(event) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      (async function () {
         try {
-          const data = new Uint8Array(event.target.result);
-          const workbook = XLSX.read(data, {type: 'array'});
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const json = XLSX.utils.sheet_to_json(worksheet);
-          
-          if(json.length === 0) {
-            alert("ملف الإكسل فارغ أو غير صالح!");
-            return;
+          if (!window.XLSX) throw new Error('مكتبة قراءة Excel غير محملة. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
+          const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: 'array', cellDates: true });
+          if (!workbook.SheetNames || !workbook.SheetNames.length) throw new Error('الملف لا يحتوي على أوراق عمل.');
+
+          // اختر أول ورقة تحتوي على صفوف فعلية، مع دعم أسماء الأعمدة العربية والإنجليزية.
+          let rows = [];
+          for (const sheetName of workbook.SheetNames) {
+            const sheet = workbook.Sheets[sheetName];
+            const candidate = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, blankrows: false });
+            if (candidate.length) { rows = candidate; break; }
           }
+          if (!rows.length) throw new Error('ورقة الإكسل فارغة أو لا تحتوي على صف عناوين يتبعه بيانات.');
 
-          let count = 0;
-          for(let row of json) {
-            let storeName = row['المخزن'] || row['Store'] || 'مخزن المحل الرئيسي';
-            let category = row['القسم'] || row['Category'] || 'عام';
-            let name = row['الصنف'] || row['Item'] || row['اسم الصنف'] || '';
-            let barcode = row['الباركود'] || row['Barcode'] || ('NON-' + Math.floor(100000 + Math.random() * 900000));
-            let qty = parseInt(row['الكمية'] || row['Qty'] || 1) || 1;
-            let buyPrice = parseFloat(row['شراء'] || row['BuyPrice'] || row['سعر الشراء'] || 0) || 0;
-            let sellPrice = parseFloat(row['بيع'] || row['SellPrice'] || row['سعر البيع'] || 0) || 0;
-            let installationFee = parseFloat(row['مصنعية'] || row['InstallationFee'] || 0) || 0;
+          const normalize = value => String(value == null ? '' : value).trim().toLowerCase()
+            .replace(/[\u064B-\u065F\u0670]/g, '').replace(/[\s_\-\/\\().:]+/g, '');
+          const aliases = {
+            name: ['الصنف','اسم الصنف','اسم الصنف ','اسم القطعة','البيان','item','itemname','name','product','productname'],
+            store: ['المخزن','اسم المخزن','store','storename','warehouse','warehousename'],
+            category: ['القسم','التصنيف','category','department'],
+            barcode: ['الباركود','باركود','كود الصنف','الكود','barcode','itemcode','code','sku'],
+            qty: ['الكمية','رصيد','الرصيد','كمية','qty','quantity','stock','stockqty'],
+            minQty: ['حد التنبيه','قيمة تنبيه النقص','حد النقص','minqty','minimum','reorderlevel'],
+            buyPrice: ['شراء','سعر الشراء','سعر التكلفة','التكلفة','buyprice','purchaseprice','cost','costprice'],
+            sellPrice: ['بيع','سعر البيع','sellprice','saleprice','sellingprice','price'],
+            installationFee: ['مصنعية','المصنعية','اجرة','أجرة','installationfee','labor','labour'],
+            brand: ['الفرع / الماركة','الفرع','الماركة','brand','branch'],
+            validity: ['الصلاحية','صلاحية','صلاحية كم','عدد الكيلومترات','kmvalidity','validity','expirydate','تاريخ الصلاحية'],
+            origin: ['بلد المنشأة','بلد المنشأ','المنشأ','origin','country'],
+            supplierName: ['المورد','اسم المورد','supplier','suppliername']
+          };
+          const get = (row, key, fallback='') => {
+            const map = Object.create(null);
+            Object.keys(row).forEach(k => { map[normalize(k)] = row[k]; });
+            for (const alias of aliases[key] || []) {
+              const value = map[normalize(alias)];
+              if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+            }
+            return fallback;
+          };
+          const num = (value, fallback=0) => {
+            if (value === null || value === undefined || String(value).trim() === '') return fallback;
+            const cleaned = String(value).replace(/[,،]/g, '').trim();
+            const parsed = Number(cleaned);
+            return Number.isFinite(parsed) ? parsed : fallback;
+          };
 
-            if(!name) continue;
+          const items = rows.map(row => {
+            const name = String(get(row, 'name', '')).trim();
+            if (!name) return null;
+            const barcodeValue = get(row, 'barcode', '');
+            return {
+              storeName: String(get(row, 'store', 'مخزن المحل الرئيسي')).trim() || 'مخزن المحل الرئيسي',
+              category: String(get(row, 'category', 'عام')).trim() || 'عام',
+              name,
+              barcode: String(barcodeValue).trim() || ('NON-' + Math.floor(100000 + Math.random() * 900000)),
+              qty: num(get(row, 'qty', 1), 1),
+              minQty: num(get(row, 'minQty', 0), 0),
+              buyPrice: num(get(row, 'buyPrice', 0), 0),
+              sellPrice: num(get(row, 'sellPrice', 0), 0),
+              installationFee: num(get(row, 'installationFee', 0), 0),
+              kmValidity: get(row, 'validity', ''),
+              expiryDate: get(row, 'validity', ''),
+              brand: String(get(row, 'brand', '')).trim(),
+              origin: String(get(row, 'origin', '')).trim(),
+              supplierId: '',
+              supplierName: String(get(row, 'supplierName', '')).trim(),
+              withdrawCount: 0
+            };
+          }).filter(Boolean);
 
-            await addData("inventory", {
-              storeName, category, name, barcode, qty, minQty, buyPrice, sellPrice, installationFee, kmValidity, expiryDate, brand, origin, supplierId, supplierName, withdrawCount: 0
-            });
-            count++;
+          if (!items.length) throw new Error('لم يتم العثور على أصناف. تأكد أن أحد الأعمدة يحتوي على اسم الصنف أو الصنف أو Item.');
+          let countAdded = 0, countUpdated = 0, countSkipped = 0;
+          const currentItems = await getData('inventory');
+          const normName = value => String(value || '').trim().toLocaleLowerCase('ar').replace(/[\u064B-\u065F\u0670]/g,'').replace(/\s+/g,' ');
+          for (const item of items) {
+            const duplicate = currentItems.find(existing => normName(existing.name || existing.itemName) === normName(item.name));
+            if (duplicate) {
+              const choice = prompt(`الصنف «${item.name}» موجود بالفعل في المخزن.\nاكتب رقم الاختيار:\n1 - تكرار الصنف وإضافته كصنف جديد\n2 - تعديل بيانات الصنف الموجود\n0 - تخطي هذا الصنف`, '2');
+              if (choice === null || String(choice).trim() === '0') { countSkipped++; continue; }
+              if (String(choice).trim() === '1') {
+                const id = await addData('inventory', item);
+                currentItems.push({...item,id}); countAdded++;
+              } else if (String(choice).trim() === '2') {
+                const merged = {...duplicate, ...item, id:duplicate.id};
+                if (!useLocalFallback && db && duplicate.id && !String(duplicate.id).startsWith('local_')) {
+                  const update = {...merged}; delete update.id;
+                  await db.collection('inventory').doc(String(duplicate.id)).update(update);
+                } else {
+                  const local = JSON.parse(localStorage.getItem('inventory') || '[]');
+                  const idx = local.findIndex(x => String(x.id) === String(duplicate.id));
+                  if (idx >= 0) local[idx] = merged; else local.push(merged);
+                  localStorage.setItem('inventory', JSON.stringify(local));
+                }
+                const idx = currentItems.findIndex(x => String(x.id) === String(duplicate.id));
+                if (idx >= 0) currentItems[idx] = merged;
+                countUpdated++;
+              } else {
+                alert('اختيار غير صحيح؛ سيتم تخطي الصنف.'); countSkipped++;
+              }
+            } else {
+              const id = await addData('inventory', item);
+              currentItems.push({...item,id}); countAdded++;
+            }
           }
-
-          alert(`تم استيراد (${count}) صنف بنجاح من ملف الإكسل!`);
-          loadInventoryData();
+          alert(`انتهى الاستيراد من ملف الإكسل.\nأصناف جديدة: ${countAdded}\nأصناف تم تعديلها: ${countUpdated}\nأصناف تم تخطيها: ${countSkipped}`);
+          await loadInventoryData();
+        } catch (err) {
+          console.error('Excel inventory import failed:', err);
+          alert('تعذر استيراد ملف الإكسل: ' + (err && err.message ? err.message : 'تأكد من أن الملف بصيغة XLSX أو XLS وأن الصف الأول يحتوي على أسماء الأعمدة.'));
+        } finally {
           e.target.value = '';
-        } catch(err) {
-          console.error(err);
-          alert("حدث خطأ أثناء قراءة ملف الإكسل. تأكد من صحة الأعمدة والملف.");
         }
-      };
-      reader.readAsArrayBuffer(file);
+      })();
     }
 
     async function loadStoresList() {
