@@ -1727,19 +1727,57 @@ async function saveEngineerCarParts(){
 }
 
 async function engineerSendAccounting(id){
- id=id||currentSelectedCarDocId;if(!id){alert('اختر سيارة أولاً');return;}
- const c=allCarsLocalData.find(x=>x.id===id)||{};
- if(!confirm('توجيه العميل للحسابات؟'))return;
+ id=id||currentSelectedCarDocId;
+ if(!id){alert('اختر سيارة أولاً');return;}
+ if(!confirm('توجيه السيارة للحسابات وإرسال إجمالي الفاتورة للعميل عبر واتساب؟'))return;
  try{
-  await db.collection('accounting_queue').doc(id).set({carId:id,clientName:c.clientName||c.name||document.getElementById('diagClientName').value,phone:c.phone||c.clientPhone||document.getElementById('diagPhone').value,carInfo:(c.brand||'')+' '+(c.model||''),carPlate:c.plate||'',fromDepartment:'التشخيص / المهندس',originalDepartment:c.repairDepartment||'diagnosis',repairDetails:c.repairReport||c.diagnosisDetails||'',requiredParts:c.repairParts||c.requiredPartsList||[],repairServices:c.repairServices||c.installationServicesList||[],status:'متوجه للحسابات للدفع',dateStr:new Date().toISOString()},{merge:true});
-  const carRef=db.collection('cars').doc(id);
-   await carRef.set({status:'SENT_TO_TREASURY',statusLabel:'انتهى العمل — في انتظار الدفع',targetDepartment:'hesabat',treasurySentAt:new Date().toISOString()},{merge:true});
-   const liftId=c.assignedLiftId;
-   if(liftId){const lr=db.collection('lifts').doc(liftId);const ld=await lr.get();if(ld.exists){const lv=ld.data()||{};if(!lv.carId||lv.carId===id)await lr.update({status:'idle',active:true,carId:null,carClientName:null,busySince:null,lastUpdatedAt:new Date().toISOString()});}}
-   const phone=c.phone||c.clientPhone||c.mobile||document.getElementById('diagPhone')?.value;
-   if(phone){const msg='أهلاً '+(c.clientName||c.name||'عميلنا')+'، تم الانتهاء من العمل على سيارتكم، وهي الآن في انتظار إتمام الدفع بالحسابات. شكراً لثقتكم في مركز أوتو نون.';window.open('https://wa.me/'+normalizeEgyptPhone(phone)+'?text='+encodeURIComponent(msg),'_blank');}
-   alert('تم توجيه العميل للحسابات وتحرير الكوريك وتجهيز رسالة واتساب.');
- }catch(e){alert('تعذر التوجيه: '+e.message);}
+  const snap=await db.collection('cars').doc(id).get();
+  if(!snap.exists){alert('السيارة غير موجودة في سجل السيارات.');return;}
+  const c={id,...(snap.data()||{})};
+  const parts=c.repairParts||c.requiredPartsList||[];
+  const services=c.repairServices||c.installationServicesList||[];
+  const partTotal=parts.reduce((sum,x)=>{
+   const qty=Number(x.quantityNeeded||x.qty||1)||1;
+   const price=Number(x.salePrice??x.sellPrice??x.sellingPrice??x.price??x.unitPrice??0)||0;
+   return sum+qty*price;
+  },0);
+  const serviceTotal=services.reduce((sum,x)=>{
+   const qty=Number(x.qty||x.quantity||1)||1;
+   const price=Number(x.salePrice??x.price??x.unitPrice??x.servicePrice??0)||0;
+   return sum+qty*price;
+  },0);
+  const invoiceTotal=partTotal+serviceTotal;
+  const now=new Date().toISOString();
+  const clientName=c.clientName||c.name||'عميلنا';
+  const phone=c.phone||c.clientPhone||c.mobile||'';
+  await db.collection('accounting_queue').doc(id).set({
+   carId:id,clientName,phone,
+   carInfo:(c.brand||'')+' '+(c.model||''),carPlate:c.plate||c.carPlate||'',
+   fromDepartment:'التشخيص / المهندس',
+   originalDepartment:c.repairDepartment||'diagnosis',
+   repairDetails:c.repairReport||c.diagnosisDetails||'',
+   requiredParts:parts,repairServices:services,
+   partsTotal:partTotal,servicesTotal:serviceTotal,invoiceTotal,
+   status:'متوجه للحسابات للدفع',dateStr:now
+  },{merge:true});
+  await db.collection('cars').doc(id).set({
+   status:'SENT_TO_TREASURY',statusLabel:'انتهى العمل — في انتظار الدفع',
+   targetDepartment:'hesabat',treasurySentAt:now,
+   estimatedInvoiceTotal:invoiceTotal
+  },{merge:true});
+  const liftId=c.assignedLiftId;
+  if(liftId){
+   const lr=db.collection('lifts').doc(liftId),ld=await lr.get();
+   if(ld.exists){const lv=ld.data()||{};if(!lv.carId||lv.carId===id)await lr.update({status:'idle',active:true,carId:null,carClientName:null,busySince:null,lastUpdatedAt:now});}
+  }
+  if(phone){
+   const msg=`أهلاً ${clientName}،\nتم الانتهاء من العمل على سيارتكم بمركز أوتو نون.\nإجمالي الفاتورة: ${invoiceTotal.toLocaleString('ar-EG',{maximumFractionDigits:2})} جنيه.\nإجمالي قطع الغيار: ${partTotal.toLocaleString('ar-EG',{maximumFractionDigits:2})} جنيه.\nإجمالي الخدمات والإصلاحات: ${serviceTotal.toLocaleString('ar-EG',{maximumFractionDigits:2})} جنيه.\nيرجى التوجه إلى الحسابات لإتمام الدفع. شكراً لثقتكم في مركز أوتو نون.`;
+   window.open('https://wa.me/'+normalizeEgyptPhone(phone)+'?text='+encodeURIComponent(msg),'_blank');
+  }else{
+   alert('تم توجيه السيارة للحسابات وحساب إجمالي الفاتورة، لكن رقم هاتف العميل غير متوفر لإرسال واتساب.');
+  }
+  alert('تم توجيه السيارة للحسابات وحفظ إجمالي الفاتورة: '+invoiceTotal.toLocaleString('ar-EG')+' جنيه.');
+ }catch(e){alert('تعذر التوجيه للحسابات: '+e.message);}
 }
 async function saveEngineerTestDrive(){
  if(!currentSelectedCarDocId){alert('اختر سيارة أولاً');return;}
