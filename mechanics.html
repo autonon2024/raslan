@@ -257,7 +257,7 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
       <span id="loggedInUserBadge" style="font-size: 0.82rem; font-weight: bold; color: var(--primary-orange); background: rgba(234,88,12,0.1); padding: 5px 10px; border-radius: 8px;">
         <i class="fa-solid fa-user-gear"></i> الفني: جاري التحقق...
       </span>
-      <button class="btn-nav btn-dark" onclick="toggleDarkMode()"><i class="fa-solid fa-moon" id="darkModeIcon"></i> الوضع الليلي</button>
+      <button class="btn-nav btn-dark" onclick="toggleDarkMode()"><i class="fa-solid fa-moon" id="darkModeIcon"></i> الوضع الليلي</button> <button class="btn-nav" type="button" onclick="refreshDepartmentPage()"><i class="fa-solid fa-rotate"></i> تحديث الصفحة</button>
       <button class="btn-nav btn-danger" onclick="logoutUser()"><i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج</button>
     </div>
   </div>
@@ -995,8 +995,43 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
       }
     }
 
-    function selectCar(carId) {
+    
+async function refreshDepartmentPage(){
+  const btn=window.event && window.event.currentTarget;
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> جاري التحديث';}
+  try{
+    const snapshot=await db.collection('cars').get();
+    allMechanicsCars=[];
+    snapshot.forEach(doc=>allMechanicsCars.push({id:doc.id,...doc.data()}));
+    renderCarsList();
+    if(currentSelectedCarId && allMechanicsCars.some(c=>c.id===currentSelectedCarId)) await selectCar(currentSelectedCarId);
+    else if(currentSelectedCarId) currentSelectedCarId=null;
+  }catch(err){alert('تعذر تحديث البيانات: '+err.message);}
+  finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate"></i> تحديث الصفحة';}}
+}
+
+async function selectCar(carId) {
       currentSelectedCarId = carId;
+      try {
+        const freshSnapshot = await db.collection('cars').doc(carId).get();
+        if (freshSnapshot.exists) {
+          const freshCar = { id: freshSnapshot.id, ...freshSnapshot.data() };
+          const existingIndex = allMechanicsCars.findIndex(item => item.id === carId);
+          if (existingIndex >= 0) allMechanicsCars[existingIndex] = freshCar;
+          else allMechanicsCars.push(freshCar);
+        }
+      } catch (refreshError) { console.warn('تعذر جلب أحدث بيانات السيارة:', refreshError); }
+
+      try {
+        const freshSnapshot = await db.collection('cars').doc(carId).get();
+        if (freshSnapshot.exists) {
+          const freshCar = { id: freshSnapshot.id, ...freshSnapshot.data() };
+          const existingIndex = allMechanicsCars.findIndex(item => item.id === carId);
+          if (existingIndex >= 0) allMechanicsCars[existingIndex] = freshCar;
+          else allMechanicsCars.push(freshCar);
+        }
+      } catch (refreshError) { console.warn('تعذر جلب أحدث بيانات السيارة:', refreshError); }
+
       localStorage.setItem('non_mechanics_selected_car', carId);
       const car = allMechanicsCars.find(c => c.id === carId);
       if (!car) return;
