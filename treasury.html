@@ -1110,27 +1110,37 @@
           'بلد المنشأة': x.origin || ''
         }));
         const ws = XLSX.utils.json_to_sheet(rows, {header: headers});
-        ws['!cols'] = [
-          {wch:22},{wch:20},{wch:32},{wch:22},{wch:24},{wch:20},
-          {wch:13},{wch:16},{wch:16},{wch:15},{wch:18},{wch:22}
-        ];
-        ws['!rows'] = [{hpt:30}, ...rows.map(() => ({hpt:24}))];
-        ws['!autofilter'] = {ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(rows.length,1),c:headers.length-1}})};
-        ws['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+        const lastExcelRow = 1048576; // الحد الأقصى الرسمي لصفوف ورقة Excel، شامل صف العناوين
+        const lastDataRowIndex = lastExcelRow - 1;
         const border = {top:{style:'thin',color:{rgb:'AAB7C4'}},bottom:{style:'thin',color:{rgb:'AAB7C4'}},left:{style:'thin',color:{rgb:'AAB7C4'}},right:{style:'thin',color:{rgb:'AAB7C4'}}};
+        const headerStyle = {font:{name:'Arial',sz:12,bold:true,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'17365D'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border};
+        const dataStyle = {font:{name:'Arial',sz:11,color:{rgb:'1F2937'}},fill:{patternType:'solid',fgColor:{rgb:'EEF3F8'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border};
+        // أعمدة عريضة وموحدة، مع تعريف نطاق الورقة والفلتر حتى آخر صف مسموح به في Excel.
+        // لا ننشئ ملايين الخلايا الفارغة حتى لا يتضخم الملف أو يتوقف المتصفح؛ الخلايا الموجودة
+        // تُنسّق مباشرة، وتظل بقية مساحة الورقة متاحة لإدخال بيانات إضافية.
+        const widths = [22,20,32,22,24,20,13,16,16,15,18,22];
+        ws['!cols'] = widths.map(wch => ({wch}));
         for (let c=0;c<headers.length;c++) {
           const ref=XLSX.utils.encode_cell({r:0,c});
-          if(ws[ref]) ws[ref].s={font:{name:'Arial',sz:12,bold:true,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'17365D'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border};
+          if(!ws[ref]) ws[ref]={t:'s',v:headers[c]};
+          ws[ref].s=headerStyle;
         }
-        for(let r=1;r<=rows.length;r++) for(let c=0;c<headers.length;c++) {
-          const ref=XLSX.utils.encode_cell({r,c});
-          if(ws[ref]) ws[ref].s={font:{name:'Arial',sz:11,color:{rgb:'1F2937'}},fill:{patternType:'solid',fgColor:{rgb:r%2?'FFFFFF':'EEF3F8'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border,numFmt:[6,7,8,9].includes(c)?'#,##0.00':'General'};
+        // نسّق كل الصفوف التي تحتوي على بيانات فعلية فقط؛ الصفوف الجديدة تظل ضمن النطاق والفلتر.
+        for(let r=1;r<=rows.length;r++) {
+          for(let c=0;c<headers.length;c++) {
+            const ref=XLSX.utils.encode_cell({r,c});
+            if(ws[ref]) ws[ref].s={...dataStyle, fill:{patternType:'solid',fgColor:{rgb:r%2?'FFFFFF':'EEF3F8'}}, numFmt:[6,7,8,9].includes(c)?'#,##0.00':'General'};
+          }
         }
+        ws['!rows'] = [{hpt:32}];
+        ws['!autofilter'] = {ref: `A1:L${lastExcelRow}`};
+        ws['!freeze'] = {xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+        ws['!ref']=`A1:L${lastExcelRow}`;
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'أصناف المخزن');
         const stamp = new Date().toISOString().slice(0,10);
         XLSX.writeFile(wb, `AutoNon_Warehouse_Items_${stamp}.xlsx`);
-        alert('تم تصدير ملف الأصناف بالأعمدة المطلوبة مع تنسيق واضح وحدود للأعمدة وتوسيع المساحات.');
+        alert('تم تصدير ملف الأصناف بنطاق يصل إلى 1,048,576 صفًا (شامل العناوين)، مع تثبيت العناوين والفلتر وتنسيق الأصناف المسجلة.');
       } catch(err) {
         console.error(err); alert('تعذر تصدير نسخة Excel: '+(err.message||err));
       }
