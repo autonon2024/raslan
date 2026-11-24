@@ -151,7 +151,13 @@ try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);window.db=fi
   try{await secondary.auth().signOut();}catch(_){}
   const portalUrl=new URL(location.href);portalUrl.searchParams.set('supplierLogin','1');portalUrl.hash='';
   const message='مرحباً '+party.name+'، تم إنشاء حسابك لدى مركز أوتو نون لصيانة السيارات. رابط صفحة المورد: '+portalUrl.href+' | اسم المستخدم: '+username+' | كلمة المرور: '+password+' | احتفظ ببيانات الدخول ولا تشاركها مع أي شخص.';
-  const waPhone=(typeof egyptWhatsAppNumber==='function'?egyptWhatsAppNumber(party.phone):phone);
+  let waPhone=phone;
+  try {
+   if(typeof window.egyptWhatsAppNumber==='function') waPhone=String(window.egyptWhatsAppNumber(party.phone)||'').replace(/\\D/g,'')||phone;
+  } catch(_) {}
+  // تحويل رقم مصر المحلي إلى الصيغة الدولية التي يقبلها WhatsApp.
+  if(/^01\\d{9}$/.test(waPhone)) waPhone='2'+waPhone;
+  if(waPhone.startsWith('002')) waPhone=waPhone.slice(2);
   return {url:'https://wa.me/'+waPhone+'?text='+encodeURIComponent(message),username,password,portalUrl:portalUrl.href};
  }
  $('npSaveParty').addEventListener('click',async()=>{
@@ -163,8 +169,31 @@ try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);window.db=fi
   const x={...old,id,name,phone:$('npPartyPhone').value.trim(),address:$('npPartyAddress').value.trim(),accountType:old.accountType||'مورد',type:old.type||'supplier',active:true,archived:false,updatedAt:new Date().toISOString(),createdAt:old.createdAt||new Date().toISOString()};
   try{const copy={...x};delete copy.id;await saveDoc(collections.parties,id,copy);parties=parties.filter(p=>String(p.id)!==String(id)).concat(x);localStorage.setItem('suppliers_list',JSON.stringify(parties));resetForm();renderInvoiceParties();renderInvoices();if(typeof refreshSupplierSelects==='function')refreshSupplierSelects();if(typeof renderSupplierRecords==='function')renderSupplierRecords();status('تم حفظ الحساب على Firebase.');
    if(wasEditing){alert('تم تعديل بيانات الحساب وربط التعديل بصفحة الحسابات.');return;}
-   const waWindow=window.open('about:blank','_blank');try{const account=await createSupplierPortalAccount(x);if(waWindow)waWindow.location.href=account.url;else alert('تم إنشاء حساب المورد. المتصفح منع فتح واتساب؛ انسخ البيانات التالية وأرسلها للمورد:\nالرابط: '+account.portalUrl+'\nاسم المستخدم: '+account.username+'\nكلمة المرور: '+account.password);alert('تم إنشاء حساب المورد. بيانات الدخول في رسالة واتساب.');}
-   catch(authError){if(waWindow)waWindow.close();alert('تم حفظ المورد على السيرفر، لكن لم يتم إنشاء حساب الدخول: '+(authError.message||authError)+'\nتأكد من تفعيل Email/Password في Firebase Authentication.');}
+   // افتح نافذة فارغة فور ضغط المستخدم حتى لا يمنع المتصفح نافذة WhatsApp بعد انتظار Firebase.
+   const waWindow=window.open('about:blank','_blank');
+   let account=null;
+   try {
+    account=await createSupplierPortalAccount(x);
+    const waUrl=account.url;
+    if(waWindow&&!waWindow.closed){waWindow.location.replace(waUrl);waWindow.focus();}
+    else {
+     // بديل واضح عند منع النوافذ المنبثقة: اعرض الرابط لفتحه يدويًا.
+     prompt('تم إنشاء حساب المورد. انسخ رابط WhatsApp التالي وافتحه لإرسال بيانات الدخول:',waUrl);
+     alert('تم إنشاء حساب المورد. إذا لم يفتح WhatsApp تلقائيًا، استخدم الرابط الذي ظهر لك.');
+    }
+    alert('تم حفظ المورد وإنشاء حسابه. تم تجهيز محادثة WhatsApp برسالة الترحيب وبيانات الدخول.');
+   } catch(authError) {
+    const rawPhone=String(x.phone||'').replace(/\\D/g,'');
+    let waPhone=rawPhone;
+    try{if(typeof window.egyptWhatsAppNumber==='function')waPhone=String(window.egyptWhatsAppNumber(x.phone)||'').replace(/\\D/g,'')||rawPhone;}catch(_){}
+    if(/^01\\d{9}$/.test(waPhone))waPhone='2'+waPhone;
+    if(waPhone.startsWith('002'))waPhone=waPhone.slice(2);
+    const welcome='مرحباً '+x.name+'، تم تسجيل بياناتك كمورد لدى مركز أوتو نون لصيانة السيارات. يسعدنا التواصل معك عبر هذه المحادثة.';
+    const fallbackUrl='https://wa.me/'+waPhone+'?text='+encodeURIComponent(welcome);
+    if(waWindow&&!waWindow.closed){waWindow.location.replace(fallbackUrl);waWindow.focus();}
+    else prompt('تعذر فتح النافذة تلقائيًا. افتح رابط WhatsApp التالي للتواصل مع المورد:',fallbackUrl);
+    alert('تم حفظ المورد وفتح محادثة WhatsApp الترحيبية. لكن لم يتم إنشاء حساب دخول المورد: '+(authError.message||authError)+'\\nراجع تفعيل Email/Password في Firebase Authentication لإنشاء حساب البوابة.');
+   }
   }catch(e){alert('تعذر الحفظ على Firebase: '+(e.message||e));}
  });
  $('npPartyRows').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.npEdit||b.dataset.npDelete||b.dataset.npRestore||b.dataset.npLedger;if(!id)return;const p=parties.find(x=>String(x.id)===String(id));if(!p)return;
