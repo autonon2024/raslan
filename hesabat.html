@@ -3858,91 +3858,92 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       const transfersEl = document.getElementById('statTransfersTotal');
       const treasuryEl = document.getElementById('statTreasuryTotal');
       const deferredEl = document.getElementById('statDeferredTotal');
-
+      const expensesEl = document.getElementById('statExpensesTotal');
+      const toNum = value => {
+        if (value === null || value === undefined || value === '') return 0;
+        const n = Number(String(value).replace(/[,،\sجنيه]/g, '').replace(/[٠-٩]/g, ch => '٠١٢٣٤٥٦٧٨٩'.indexOf(ch)));
+        return Number.isFinite(n) ? n : 0;
+      };
+      const recordTime = d => {
+        let value = d.dateStr ?? d.date ?? d.createdAt ?? d.timestamp ?? d.updatedAt ?? '';
+        if (value && typeof value.toDate === 'function') value = value.toDate();
+        if (value && typeof value === 'object' && value.seconds) value = value.seconds * 1000;
+        let t = new Date(value).getTime();
+        if (!Number.isFinite(t) || !t) t = toNum(value);
+        if (t > 0 && t < 1000000000000) t *= 1000;
+        return t || 0;
+      };
       try {
-        const [transactionsSnap, treasuriesSnap] = await Promise.all([
+        const [transactionsSnap, treasuriesSnap, expensesSnap] = await Promise.all([
           db.collection('treasury_transactions').get(),
-          db.collection('treasuries').get()
+          db.collection('treasuries').get(),
+          db.collection('expenses').get()
         ]);
-
-        let drawerTotal = 0;
-        let shiftDrawerTotal = 0;
+        let drawerTotal = 0, shiftDrawerTotal = 0, transfersTotal = 0, deferredTotal = 0, treasuryBalanceTotal = 0, expensesTotal = 0;
         const activeShift = window.getActiveEmployeeShift?.();
-        const activeShiftStart = activeShift && activeShift.status === 'open' ? (Date.parse(activeShift.startAt)||0) : 0;
-        let transfersTotal = 0;
-        let deferredTotal = 0;
-        let treasuryBalanceTotal = 0;
-
-        treasuriesSnap.forEach(doc => {
-          const data = doc.data() || {};
-          treasuryBalanceTotal += Number(data.balance) || 0;
-        });
-
+        const shiftOpen = !!(activeShift && activeShift.status === 'open');
+        const shiftStart = shiftOpen ? (Number(activeShift.startTimestamp) || Date.parse(activeShift.startAt) || 0) : 0;
+        const shiftId = String(activeShift?.id || '');
+        const employee = String(activeShift?.employeeName || '').trim().toLocaleLowerCase('ar');
+        const belongsToShift = d => {
+          const time = recordTime(d);
+          if (!shiftOpen || !time || time < shiftStart) return false;
+          if (d.shiftId && shiftId && String(d.shiftId) === shiftId) return true;
+          const who = String(d.employeeName || d.cashier || '').trim().toLocaleLowerCase('ar');
+          return !who || !employee || who === employee;
+        };
+        treasuriesSnap.forEach(doc => { treasuryBalanceTotal += toNum((doc.data() || {}).balance); });
         transactionsSnap.forEach(doc => {
           const d = doc.data() || {};
-          const paid = Number(d.paidAmount ?? d.paymentAmount ?? d.amountPaid ?? 0) || 0;
+          const paid = toNum(d.paidAmount ?? d.paymentAmount ?? d.amountPaid ?? d.amount);
           const method = String(d.method || d.paymentMethod || '').toLowerCase();
-          const isDeferredMethod = /آجل|اجل|على الحساب|مديونية/.test(method);
-          let rem = Number(d.remainingAmount ?? 0) || 0;
-          if (isDeferredMethod && rem <= 0) rem = Math.max(0, (Number(d.totalAmount ?? d.total ?? 0) || 0) - paid);
           const direction = String(d.direction || '').toLowerCase();
           const type = String(d.type || '').toLowerCase();
-
-          // لا تُحسب حركات الصرف وسداد الموردين ضمن المقبوضات.
-          const isOutgoing = direction === 'out' ||
-            /سداد مورد|مصروف|صرف|مرتجع|تالف/.test(type);
-          if (!isOutgoing) {
-            const splitCash = Number(d.cashPaidAmount ?? d.paymentBreakdown?.cash ?? 0) || 0;
-            const splitTransfer = Number(d.transferPaidAmount ?? d.paymentBreakdown?.transfer ?? 0) || 0;
-            if (splitCash > 0 || splitTransfer > 0) {
-              drawerTotal += splitCash;
-              transfersTotal += splitTransfer;
-            } else if (/انستا.?باي|تحويل|بطاق|visa|mastercard/i.test(method)) {
-              transfersTotal += paid;
-            } else {
-              drawerTotal += paid;
-            }
-            deferredTotal += rem;
+          const outgoing = direction === 'out' || /سداد مورد|مصروف|صرف|مرتجع|تالف/.test(type) || toNum(d.expenseAmount) > 0;
+          const cashPart = toNum(d.cashPaidAmount ?? d.paymentBreakdown?.cash);
+          const transferPart = toNum(d.transferPaidAmount ?? d.paymentBreakdown?.transfer);
+          const hasSplit = cashPart > 0 || transferPart > 0;
+          const isTransfer = /انستا.?باي|تحويل|بطاق|visa|mastercard|الكترون/.test(method);
+          const isDeferred = /آجل|اجل|على الحساب|مديونية|credit/.test(method) || /آجل|اجل|مديونية/.test(type);
+          const remaining = toNum(d.remainingAmount ?? d.remaining ?? d.debt ?? d.balanceDue ?? d.deferredAmount ?? d.creditAmount);
+          if (!outgoing) {
+            if (hasSplit) { drawerTotal += cashPart; transfersTotal += transferPart; }
+            else if (isTransfer) transfersTotal += paid;
+            else if (!isDeferred) drawerTotal += paid;
+            deferredTotal += remaining;
           }
-          if (activeShiftStart && /نقد|كاش|cash/.test(method)) {
-            const rawTime=d.dateStr||d.date||d.createdAt||d.timestamp||'';
-            let txTime=new Date(rawTime).getTime();
-            if(!Number.isFinite(txTime) || !txTime) txTime=Number(rawTime)||0;
-            if(txTime>0 && txTime<1000000000000) txTime*=1000;
-            const sameShift=!d.shiftId || String(d.shiftId)===String(activeShift.id);
-            if(txTime>=activeShiftStart && sameShift) {
-              const amount=Number(d.amount??d.paidAmount??d.paymentAmount??d.expenseAmount)||0;
-              const outgoing=String(d.direction||d.type||'').toLowerCase();
-              shiftDrawerTotal += (/out|سحب|صرف|مصروف|سداد|دفع|مرتجع|تالف/i.test(outgoing)||Number(d.expenseAmount)>0) ? -amount : amount;
-            }
+          if (shiftOpen && belongsToShift(d)) {
+            const cashValue = hasSplit ? cashPart : (isTransfer || isDeferred ? 0 : paid);
+            const movementAmount = toNum(d.amount ?? d.expenseAmount ?? d.paidAmount ?? d.paymentAmount);
+            if (cashValue) shiftDrawerTotal += outgoing ? -cashValue : cashValue;
+            else if (outgoing && /نقد|كاش|cash/.test(method)) shiftDrawerTotal -= movementAmount;
           }
         });
-
-        // تسويات التحويل بين بنود الملخص: تخصم من المصدر وتضاف إلى الوجهة.
+        expensesSnap.forEach(doc => {
+          const d = doc.data() || {};
+          const amount = Math.abs(toNum(d.amount ?? d.expenseAmount));
+          expensesTotal += amount;
+          if (shiftOpen && belongsToShift(d)) shiftDrawerTotal -= amount;
+        });
         const adjustments = {drawer:0, transfers:0, treasury:0, deferred:0};
         const transfersSnap = await db.collection('financial_summary_transfers').get();
         transfersSnap.forEach(doc => {
-          const tr = doc.data() || {};
-          const value = Number(tr.amount) || 0;
+          const tr = doc.data() || {}, value = toNum(tr.amount);
           if (adjustments[tr.from] !== undefined) adjustments[tr.from] -= value;
           if (adjustments[tr.to] !== undefined) adjustments[tr.to] += value;
         });
         transfersTotal += adjustments.transfers;
         treasuryBalanceTotal += adjustments.treasury;
         deferredTotal += adjustments.deferred;
-
-        // إجمالي الدرج والخزينة العامة موحد: مجموع أرصدة كل الخزائن بعد التسويات.
         const unifiedCashTotal = treasuryBalanceTotal + adjustments.drawer;
-        // درج الشيفت يبدأ من صفر مع كل شيفت جديد، بينما الخزينة العامة تحتفظ برصيدها التراكمي.
-        if (drawerEl) drawerEl.textContent = formatFinancialAmount(drawerTotal);
+        if (drawerEl) drawerEl.textContent = formatFinancialAmount(unifiedCashTotal);
         if (transfersEl) transfersEl.textContent = formatFinancialAmount(transfersTotal);
         if (treasuryEl) treasuryEl.textContent = formatFinancialAmount(unifiedCashTotal);
         if (deferredEl) deferredEl.textContent = formatFinancialAmount(deferredTotal);
+        if (expensesEl) expensesEl.textContent = formatFinancialAmount(expensesTotal);
       } catch (e) {
         console.error('تعذر تحميل الملخص المالي للخزينة:', e);
-        [drawerEl, transfersEl, treasuryEl, deferredEl].forEach(el => {
-          if (el) el.textContent = 'تعذر التحميل';
-        });
+        [drawerEl, transfersEl, treasuryEl, deferredEl, expensesEl].forEach(el => { if (el) el.textContent = 'تعذر التحميل'; });
       }
     }
 
@@ -4362,6 +4363,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
             treasuryName: treasuryObj.name,
             notes: notes,
             cashier: loggedUser,
+            ...((window.getEmployeeShiftStamp && window.getEmployeeShiftStamp().shiftId) ? window.getEmployeeShiftStamp() : {}),
             dateStr: new Date().toISOString(),
             dateFormatted: new Date().toLocaleString('en-US')
           });
