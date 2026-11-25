@@ -1485,7 +1485,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
 <button class="btn-action btn-purple" id="changeManagerPinBtn" onclick="changeNonManagerPin()" style="display:none"><i class="fa-solid fa-key"></i> كلمة سر المدير</button>
 <button class="btn-action btn-purple" onclick="openSalesDaily()"><i class="fa-solid fa-cash-register"></i> يومية البيع</button>
 <button class="btn-action btn-green" id="startShiftBtn" onclick="startEmployeeShift()"><i class="fa-solid fa-play"></i> بدء شيفت</button>
-<button class="btn-action btn-purple" onclick="closeDailyRoutine()"><i class="fa-solid fa-calendar-check"></i> تقفيل اليومية</button>
+<button class="btn-action btn-purple" onclick="closeDailyRoutine()"><i class="fa-solid fa-calendar-check"></i> تقفيل اليومية</button><button class="btn-action btn-blue" id="managerShiftArchiveBtn" onclick="openManagerShiftArchive()" style="display:none"><i class="fa-solid fa-box-archive"></i> أرشيف الشيفت</button>
 <button class="btn-action btn-purple" onclick="openAccountsProfits()"><i class="fa-solid fa-chart-line"></i> حسابات وأرباح</button>
 <button class="btn-action btn-purple" onclick="toggleDarkMode()"><i class="fa-solid fa-moon" id="darkModeIcon"></i></button>
 <span id="userBadge" style="font-weight:bold; color:var(--treasury-purple); background:rgba(147,51,234,0.1); padding:6px 12px; border-radius:8px;">
@@ -8068,7 +8068,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
  const identity=String(user.username||user.userName||user.email||user.fullName||user.name||'المحاسب').trim().toLowerCase();
  const readRoles=()=>{try{return JSON.parse(localStorage.getItem('nonAutoRoles')||'{}')||{}}catch(_){return {}}};
  const roles=readRoles();
- const assignment=roles[identity]||null;
+ let assignment=roles[identity]||null;
  let role=String(assignment?.role||user.role||user.accountType||'cashier').toLowerCase();
  if(['admin','administrator','مدير','مدير النظام'].includes(role))role='manager';
  if(['viewer','مشاهد','مشاهد فقط','view'].includes(role))role='viewer';
@@ -8077,7 +8077,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
  window.nonCurrentRole=role;
  window.nonHasPermission=function(action){
    if(window.nonCurrentRole==='manager')return true;
-   const cashierAllowed=new Set(['expenses','clients','advance-payment','client-statement','collections','suppliers','invoices','shift','daily-close','invoice-pay','invoice-whatsapp','print','view']);
+   const cashierAllowed=new Set(['maintenance','expenses','clients','advance-payment','client-statement','collections','suppliers','invoices','shift','daily-close','invoice-pay','invoice-whatsapp','print','view']);
    const viewerAllowed=new Set(['clients','client-statement','archive','invoices','view','print']);
    return (window.nonCurrentRole==='cashier'?cashierAllowed:viewerAllowed).has(action);
  };
@@ -8105,22 +8105,21 @@ function printClientLifeStatement(){const content=document.getElementById('clien
      record.cashierPin=cashierPin.trim()||'1234';
    }
    all[key]=record;localStorage.setItem('nonAutoRoles',JSON.stringify(all));
-   // حفظ نوع الحساب والصلاحيات في سجل المستخدم إن كان موجوداً في Firestore.
    (async()=>{
      try{
-       if(typeof db!=='undefined'){
-         let q=await db.collection('users').where('username','==',target.trim()).limit(1).get();
-         if(q.empty)q=await db.collection('users').where('userName','==',target.trim()).limit(1).get();
-         if(!q.empty){
-           const perms=selectedRole==='manager'?{view:true,add:true,edit:true,delete:true,print:true,manage:true}:
-             selectedRole==='cashier'?{view:true,add:true,edit:false,delete:false,print:true,manage:false}:
-             {view:true,add:false,edit:false,delete:false,print:true,manage:false};
-           await q.docs[0].ref.set({role:selectedRole,accountType:selectedRole,permissions:perms,updatedAt:new Date().toISOString()},{merge:true});
-         }
-       }
-     }catch(e){console.warn('تعذر حفظ الدور في Firestore:',e);}
+       if(typeof db==='undefined')throw new Error('Firebase/Firestore غير متاح');
+       const now=new Date().toISOString();
+       const perms=selectedRole==='manager'?{view:true,add:true,edit:true,delete:true,print:true,manage:true}:
+         selectedRole==='cashier'?{view:true,add:true,edit:false,delete:false,print:true,manage:false}:
+         {view:true,add:false,edit:false,delete:false,print:true,manage:false};
+       await db.collection('user_roles').doc(key).set({...record,username:target.trim(),permissions:perms,updatedAt:now},{merge:true});
+       let q=await db.collection('users').where('username','==',target.trim()).limit(1).get();
+       if(q.empty)q=await db.collection('users').where('userName','==',target.trim()).limit(1).get();
+       if(q.empty)q=await db.collection('users').where('email','==',target.trim()).limit(1).get();
+       if(!q.empty)await q.docs[0].ref.set({role:selectedRole,accountType:selectedRole,permissions:perms,cashierPin:record.cashierPin||null,updatedAt:now},{merge:true});
+       alert('تم حفظ حساب '+(selectedRole==='manager'?'المدير':'الكاشير')+' وصلاحياته على السيرفر بنجاح.');
+     }catch(e){console.error(e);alert('تعذر حفظ الحساب على السيرفر: '+(e.message||e));}
    })();
-   alert('تم تعيين الصلاحية محليًا لهذا الجهاز. إذا كان المستخدم موجودًا في قاعدة users فتمت محاولة تحديث نوع الحساب والصلاحيات هناك.');
    if(key===identity){window.nonCurrentRole=selectedRole;applyRoleUI();}
  };
  window.changeNonManagerPin=function(){
@@ -8140,7 +8139,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    const pinBtn=$('changeManagerPinBtn');if(pinBtn)pinBtn.style.display=r==='manager'?'':'none';
    if(r==='manager')return;
    if(r==='cashier'){
-     ['maintenance','treasury','workers','archive'].forEach(k=>hide('[data-quick="'+k+'"]'));
+     ['treasury','workers','archive'].forEach(k=>hide('[data-quick="'+k+'"]'));
      hide('[onclick="openSalesDaily()"],[onclick="openAccountsProfits()"],[onclick="openSummaryTransfers()"],#customizeQuickActionsBtn');
      hide('[onclick="toggleManagerInvoiceEdit()"]');
      return;
@@ -8167,8 +8166,39 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    }
  },true);
  function showRoleEntryGate(){
+   if(!window.__hesabatServerRoleLoaded){
+     window.__hesabatServerRoleLoaded=true;
+     (async()=>{
+       try{
+         if(typeof db!=='undefined'){
+           let serverRole=null, serverRecord=null;
+           const roleDoc=await db.collection('user_roles').doc(identity).get();
+           if(roleDoc.exists){serverRecord=roleDoc.data()||{};serverRole=serverRecord.role||null;}
+           let q=await db.collection('users').where('username','==',String(user.username||user.userName||identity)).limit(1).get();
+           if(q.empty)q=await db.collection('users').where('userName','==',String(user.username||user.userName||identity)).limit(1).get();
+           if(q.empty && user.email)q=await db.collection('users').where('email','==',String(user.email)).limit(1).get();
+           if(!serverRole&&!q.empty){serverRecord=q.docs[0].data()||{};serverRole=serverRecord.role||serverRecord.accountType||null;}
+           if(serverRole){
+             assignment={...(assignment||{}),...(serverRecord||{}),role:serverRole};
+             const localAll=readRoles();localAll[identity]=assignment;localStorage.setItem('nonAutoRoles',JSON.stringify(localAll));
+             if(serverRecord.cashierPin)assignment.cashierPin=serverRecord.cashierPin;
+           }
+         }
+       }catch(e){console.warn('تعذر تحميل صلاحيات الحساب من السيرفر:',e);}
+       showRoleEntryGate();
+     })();
+     return;
+   }
    // استعادة آخر دور تم التحقق منه على نفس الجهاز حتى لا تظهر شاشة الاختيار بعد كل تحديث.
-   const rememberedRole=localStorage.getItem('nonRememberedRole_'+identity);
+   let rememberedRole=localStorage.getItem('nonRememberedRole_'+identity);
+   const assignedRaw=String(assignment?.role||user.role||user.accountType||'').toLowerCase();
+   const assignedRole=['admin','administrator','مدير','مدير النظام'].includes(assignedRaw)?'manager':
+     (['cashier','كاشير','محاسب','accountant'].includes(assignedRaw)?'cashier':
+     (['viewer','مشاهد','مشاهد فقط','view'].includes(assignedRaw)?'viewer':''));
+   if(assignedRole && rememberedRole && rememberedRole!==assignedRole){
+     localStorage.removeItem('nonRememberedRole_'+identity);
+     rememberedRole=null;
+   }
    if(rememberedRole==='manager'||rememberedRole==='cashier'){
      window.nonCurrentRole=rememberedRole;
      applyRoleUI();
@@ -8195,6 +8225,14 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    </div>`;
    document.body.appendChild(gate);
    const enter=(chosen)=>{
+     const assigned=String(assignment?.role||user.role||user.accountType||'').toLowerCase();
+     const normalizedAssigned=['admin','administrator','مدير','مدير النظام'].includes(assigned)?'manager':
+       (['cashier','كاشير','محاسب','accountant'].includes(assigned)?'cashier':
+       (['viewer','مشاهد','مشاهد فقط','view'].includes(assigned)?'viewer':''));
+     if(normalizedAssigned && chosen!==normalizedAssigned){
+       alert('هذا الحساب مخصص لـ '+(normalizedAssigned==='manager'?'المدير':normalizedAssigned==='cashier'?'الكاشير':'المشاهد')+' فقط. راجع مدير النظام لتغيير الصلاحية.');
+       return;
+     }
      let expected,caption;
      if(chosen==='manager'){
        expected=String(localStorage.getItem('nonManagerPin')||localStorage.getItem('nonQuickActionsPin')||'123');
@@ -9632,5 +9670,128 @@ body.non-role-cashier .stat-mini-card:has(#statTreasuryTotal){display:none!impor
     }
     return shiftId;
   };
+})();
+</script>
+
+
+<script id="hesabat-manager-shift-archive-server-v1">
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>(Number(v)||0).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  let shiftRows=[], selectedShift=null;
+
+  function ensureArchiveUI(){
+    if(!$('managerShiftArchiveModal')){
+      const modal=document.createElement('div');
+      modal.id='managerShiftArchiveModal';
+      modal.className='non-service-overlay no-print';
+      modal.innerHTML=`<div class="non-service-window">
+        <div class="non-service-window-head"><h2><i class="fa-solid fa-box-archive"></i> أرشيف الشيفتات</h2>
+          <button class="non-service-close" onclick="closeManagerShiftArchive()">إغلاق ✕</button></div>
+        <div class="card-box">
+          <div class="form-grid">
+            <div class="form-field"><label>بحث باسم الموظف أو رقم التقفيل</label><input id="shiftArchiveSearch" oninput="renderManagerShiftArchive()" placeholder="ابحث..."></div>
+            <div class="form-field"><label>من تاريخ</label><input id="shiftArchiveFrom" type="date" onchange="renderManagerShiftArchive()"></div>
+            <div class="form-field"><label>إلى تاريخ</label><input id="shiftArchiveTo" type="date" onchange="renderManagerShiftArchive()"></div>
+          </div>
+          <div id="managerShiftArchiveStatus" style="margin:8px 0;color:#64748b;font-weight:bold">جاري تحميل الأرشيف...</div>
+          <div class="table-responsive"><table><thead><tr><th>رقم التقفيل</th><th>الموظف</th><th>بداية الشيفت</th><th>نهاية الشيفت</th><th>الإيداعات</th><th>السحوبات</th><th>المصروفات</th><th>صافي الدرج</th><th>الإجراء</th></tr></thead><tbody id="managerShiftArchiveBody"></tbody></table></div>
+        </div>
+      </div>`;
+      document.body.appendChild(modal);
+    }
+    if(!$('managerShiftDetailModal')){
+      const modal=document.createElement('div');
+      modal.id='managerShiftDetailModal';
+      modal.className='non-service-overlay no-print';
+      modal.style.zIndex='12020';
+      modal.innerHTML=`<div class="non-service-window">
+        <div class="non-service-window-head"><h2 id="managerShiftDetailTitle">تفاصيل الشيفت</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="non-service-close" onclick="printManagerShiftDetail()">طباعة التقرير</button><button class="non-service-close" onclick="closeManagerShiftDetail()">إغلاق ✕</button></div></div>
+        <div id="managerShiftDetailContent" class="card-box"></div>
+      </div>`;
+      document.body.appendChild(modal);
+    }
+  }
+  function roleIsManager(){return String(window.nonCurrentRole||'').toLowerCase()==='manager';}
+  function formatDate(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleString('ar-EG');}
+  function detailsHtml(r){
+    const section=(title,arr,cols)=>`<h3 style="margin:16px 0 7px;padding:9px;background:#e8eef5;color:#173753;border-radius:7px">${title} (${(arr||[]).length})</h3>
+      <div class="table-responsive"><table><thead><tr>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${(arr||[]).length?(arr||[]).map((x,i)=>`<tr><td>${i+1}</td>${cols.slice(1).map(c=>`<td>${esc(c[1](x))}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length}">لا توجد بيانات</td></tr>`}</tbody></table></div>`;
+    const deposits=r.deposits||[], withdrawals=r.withdrawals||[], expenses=r.expenses||[];
+    return `<div class="form-grid">
+      <div class="form-field"><label>رقم التقفيل</label><input readonly value="${esc(r.closingNumber||'—')}"></div>
+      <div class="form-field"><label>الموظف</label><input readonly value="${esc(r.employeeName||'—')}"></div>
+      <div class="form-field"><label>بداية الشيفت</label><input readonly value="${esc(formatDate(r.startAt))}"></div>
+      <div class="form-field"><label>نهاية الشيفت</label><input readonly value="${esc(formatDate(r.endAt||r.closedAt))}"></div>
+    </div>
+    <div class="financial-stats-grid">
+      <div class="stat-mini-card"><span>إجمالي الإيداعات</span><strong>${money(r.totalDeposits)} جنيه</strong></div>
+      <div class="stat-mini-card"><span>إجمالي السحوبات</span><strong>${money(r.totalWithdrawals)} جنيه</strong></div>
+      <div class="stat-mini-card"><span>إجمالي المصروفات</span><strong>${money(r.totalExpenses)} جنيه</strong></div>
+      <div class="stat-mini-card"><span>صافي درج الشيفت</span><strong>${money(r.drawerTotal)} جنيه</strong></div>
+      <div class="stat-mini-card"><span>عدد حركات الخزينة</span><strong>${Number(r.transactionCount)||deposits.length+withdrawals.length}</strong></div>
+      <div class="stat-mini-card"><span>ترحيل للخزينة العامة</span><strong>${money(r.cashTransferredAmount)} جنيه</strong></div>
+    </div>
+    ${section('الإيداعات',deposits,[['م'],['التاريخ',x=>formatDate(x.dateStr||x.date||x.createdAt)],['الخزينة',x=>x.treasuryName||''],['البيان',x=>x.notes||x.type||x.invoiceSerial||''],['طريقة الدفع',x=>x.method||x.paymentMethod||''],['المبلغ',x=>money(x.amount??x.paidAmount??x.paymentAmount)]])}
+    ${section('السحوبات',withdrawals,[['م'],['التاريخ',x=>formatDate(x.dateStr||x.date||x.createdAt)],['الخزينة',x=>x.treasuryName||''],['البيان',x=>x.notes||x.type||x.invoiceSerial||''],['طريقة الدفع',x=>x.method||x.paymentMethod||''],['المبلغ',x=>money(x.amount??x.expenseAmount??x.paidAmount)]])}
+    ${section('المصروفات',expenses,[['م'],['التاريخ',x=>formatDate(x.dateStr||x.date||x.createdAt)],['البند',x=>x.title||x.type||'مصروف'],['الخزينة',x=>x.treasuryName||''],['الملاحظات',x=>x.notes||''],['المبلغ',x=>money(x.amount)]])}`;
+  }
+  window.openManagerShiftArchive=async function(){
+    if(!roleIsManager()){alert('أرشيف الشيفتات متاح لحساب المدير فقط.');return;}
+    ensureArchiveUI();$('managerShiftArchiveModal').classList.add('is-open');
+    $('managerShiftArchiveStatus').textContent='جاري تحميل الشيفتات من السيرفر...';
+    try{
+      if(!window.db||typeof db.collection!=='function')throw new Error('اتصال Firestore غير متاح');
+      const snap=await db.collection('employee_shifts').get();
+      shiftRows=[];snap.forEach(d=>{const x={id:d.id,...(d.data()||{})};if(x.status==='closed'||x.endAt||x.closedAt)shiftRows.push(x);});
+      shiftRows.sort((a,b)=>new Date(b.endAt||b.closedAt||b.startAt||0)-new Date(a.endAt||a.closedAt||a.startAt||0));
+      $('managerShiftArchiveStatus').textContent=`تم تحميل ${shiftRows.length} شيفت من السيرفر.`;
+      window.renderManagerShiftArchive();
+    }catch(e){$('managerShiftArchiveStatus').textContent='تعذر تحميل الأرشيف: '+e.message;$('managerShiftArchiveBody').innerHTML='';}
+  };
+  window.closeManagerShiftArchive=()=>$('managerShiftArchiveModal')?.classList.remove('is-open');
+  window.renderManagerShiftArchive=function(){
+    if(!$('managerShiftArchiveBody'))return;
+    const q=String($('shiftArchiveSearch')?.value||'').toLowerCase().trim(),from=$('shiftArchiveFrom')?.value||'',to=$('shiftArchiveTo')?.value||'';
+    const rows=shiftRows.filter(r=>{
+      const d=String(r.endAt||r.closedAt||r.startAt||'').slice(0,10);
+      return (!q||String(r.employeeName||'').toLowerCase().includes(q)||String(r.closingNumber||'').includes(q))&&(!from||d>=from)&&(!to||d<=to);
+    });
+    $('managerShiftArchiveBody').innerHTML=rows.length?rows.map(r=>`<tr>
+      <td>${esc(r.closingNumber||'—')}</td><td>${esc(r.employeeName||'—')}</td><td>${esc(formatDate(r.startAt))}</td><td>${esc(formatDate(r.endAt||r.closedAt))}</td>
+      <td>${money(r.totalDeposits)}</td><td>${money(r.totalWithdrawals)}</td><td>${money(r.totalExpenses)}</td><td><b>${money(r.drawerTotal)}</b></td>
+      <td><button class="btn-action btn-blue" onclick="openManagerShiftDetail('${esc(r.id)}')">عرض التفاصيل</button></td></tr>`).join(''):'<tr><td colspan="9" style="text-align:center">لا توجد شيفتات مطابقة.</td></tr>';
+  };
+  window.openManagerShiftDetail=function(id){
+    selectedShift=shiftRows.find(x=>String(x.id)===String(id));if(!selectedShift)return;
+    ensureArchiveUI();$('managerShiftDetailTitle').textContent='تفاصيل الشيفت رقم '+(selectedShift.closingNumber||'—');
+    $('managerShiftDetailContent').innerHTML=detailsHtml(selectedShift);
+    $('managerShiftDetailModal').classList.add('is-open');
+  };
+  window.closeManagerShiftDetail=()=>$('managerShiftDetailModal')?.classList.remove('is-open');
+  window.printManagerShiftDetail=function(){
+    if(!selectedShift)return;
+    const content=detailsHtml(selectedShift);
+    const w=window.open('','_blank','width=1200,height=900');if(!w){alert('اسمح بالنوافذ المنبثقة للطباعة.');return;}
+    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير الشيفت</title><style>body{font-family:Tahoma,Arial;padding:18px;color:#111}h2{text-align:center;color:#173753}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form-field{padding:7px;border:1px solid #ddd}.form-field label{display:block;font-weight:bold}input{width:95%;border:0;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:10px;margin:7px 0}th,td{border:1px solid #777;padding:6px;text-align:right}th{background:#e8eef5}.financial-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.stat-mini-card{border:1px solid #aaa;padding:8px;margin:4px}.stat-mini-card span,.stat-mini-card strong{display:block}@page{size:A4 landscape;margin:8mm}</style></head><body><h2>مركز أوتو نون لصيانة السيارات — تقرير الشيفت</h2>${content}<script>window.onload=()=>window.print()<\\/script></body></html>`);
+    w.document.close();
+  };
+
+  // Keep the shift archive button restricted to manager accounts.
+  function applyButtonVisibility(){
+    const b=$('managerShiftArchiveBtn');if(b)b.style.display=roleIsManager()?'':'none';
+  }
+  document.addEventListener('DOMContentLoaded',applyButtonVisibility);
+  const originalApply=window.applyRoleUI;
+  if(typeof originalApply==='function'){
+    const wrapped=function(){originalApply();applyButtonVisibility();};
+    // Existing applyRoleUI is closure-scoped, so also refresh after role badge updates.
+    window.applyRoleUI=wrapped;
+  }
+  const observer=new MutationObserver(applyButtonVisibility);
+  observer.observe(document.documentElement,{subtree:true,childList:true});
+  setTimeout(()=>{applyButtonVisibility();},700);
 })();
 </script>
