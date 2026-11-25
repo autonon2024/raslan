@@ -2485,6 +2485,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
     function logout() {
       // تسجيل الخروج اليدوي يمسح الدور المحفوظ لهذا الجهاز.
       Object.keys(localStorage).filter(k => k.startsWith('nonRememberedRole_')).forEach(k => localStorage.removeItem(k));
+      Object.keys(sessionStorage).filter(k => k.startsWith('nonManagerAuthenticated_') || k.startsWith('nonCashierAuthenticated_')).forEach(k => sessionStorage.removeItem(k));
       localStorage.removeItem('currentUser');
       localStorage.removeItem('currentRolePage');
       window.location.href = 'login.html';
@@ -8195,7 +8196,9 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    const assignedRole=['admin','administrator','مدير','مدير النظام'].includes(assignedRaw)?'manager':
      (['cashier','كاشير','محاسب','accountant'].includes(assignedRaw)?'cashier':
      (['viewer','مشاهد','مشاهد فقط','view'].includes(assignedRaw)?'viewer':''));
-   if(assignedRole && rememberedRole && rememberedRole!==assignedRole){
+   // كلمة سر المدير المستقلة تسمح بفتح وضع المدير حتى لو كان حساب المستخدم الأساسي مسجلاً ككاشير.
+   const managerSessionAuthenticated=sessionStorage.getItem('nonManagerAuthenticated_'+identity)==='1';
+   if(assignedRole && rememberedRole && rememberedRole!==assignedRole && !(rememberedRole==='manager' && managerSessionAuthenticated)){
      localStorage.removeItem('nonRememberedRole_'+identity);
      rememberedRole=null;
    }
@@ -8229,7 +8232,8 @@ function printClientLifeStatement(){const content=document.getElementById('clien
      const normalizedAssigned=['admin','administrator','مدير','مدير النظام'].includes(assigned)?'manager':
        (['cashier','كاشير','محاسب','accountant'].includes(assigned)?'cashier':
        (['viewer','مشاهد','مشاهد فقط','view'].includes(assigned)?'viewer':''));
-     if(normalizedAssigned && chosen!==normalizedAssigned){
+     // لا تمنع صلاحية الكاشير تجربة كلمة سر المدير؛ كلمة سر المدير مستقلة وتسمح بالترقية المؤقتة لهذه الجلسة.
+     if(normalizedAssigned && chosen!==normalizedAssigned && chosen!=='manager'){
        alert('هذا الحساب مخصص لـ '+(normalizedAssigned==='manager'?'المدير':normalizedAssigned==='cashier'?'الكاشير':'المشاهد')+' فقط. راجع مدير النظام لتغيير الصلاحية.');
        return;
      }
@@ -8246,8 +8250,13 @@ function printClientLifeStatement(){const content=document.getElementById('clien
      if(entered!==expected){alert('كلمة المرور غير صحيحة.');return;}
      window.nonCurrentRole=chosen;
      localStorage.setItem('nonRememberedRole_'+identity,chosen);
-     if(chosen==='cashier')sessionStorage.setItem('nonCashierAuthenticated_'+identity,'1');
-     else sessionStorage.removeItem('nonCashierAuthenticated_'+identity);
+     if(chosen==='cashier'){
+       sessionStorage.setItem('nonCashierAuthenticated_'+identity,'1');
+       sessionStorage.removeItem('nonManagerAuthenticated_'+identity);
+     }else if(chosen==='manager'){
+       sessionStorage.setItem('nonManagerAuthenticated_'+identity,'1');
+       sessionStorage.removeItem('nonCashierAuthenticated_'+identity);
+     }
      document.body.classList.remove('non-role-locked');
      gate.remove();
      applyRoleUI();
