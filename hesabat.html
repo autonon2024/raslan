@@ -1481,10 +1481,10 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
 <button class="btn-action btn-orange" data-quick="suppliers" onclick="openServiceModal('suppliersServiceModal')"><i class="fa-solid fa-truck-field"></i> الموردون</button>
 <button class="btn-action btn-blue" data-quick="invoices" onclick="openServiceModal('invoicesServiceModal')"><i class="fa-solid fa-file-invoice-dollar"></i> الفواتير</button>
 <button class="btn-action btn-purple" id="customizeQuickActionsBtn" onclick="openQuickActionsSettings()"><i class="fa-solid fa-sliders"></i> تخصيص القائمة</button>
-<button class="btn-action btn-orange" id="managePermissionsBtn" onclick="openNonPermissionsManager()"><i class="fa-solid fa-user-shield"></i> تعيين الصلاحيات</button>
 <button class="btn-action btn-purple" id="changeManagerPinBtn" onclick="changeNonManagerPin()" style="display:none"><i class="fa-solid fa-key"></i> كلمة سر المدير</button>
 <button class="btn-action btn-purple" onclick="openSalesDaily()"><i class="fa-solid fa-cash-register"></i> يومية البيع</button>
 <button class="btn-action btn-green" id="startShiftBtn" onclick="startEmployeeShift()"><i class="fa-solid fa-play"></i> بدء شيفت</button>
+<button class="btn-action btn-orange" id="cashierTransferShiftBtn" onclick="transferCashierShiftBalance()"><i class="fa-solid fa-arrow-right-arrow-left"></i> ترحيل رصيد الشيفت للخزينة العامة</button>
 <button class="btn-action btn-purple" onclick="closeDailyRoutine()"><i class="fa-solid fa-calendar-check"></i> تقفيل اليومية</button><button class="btn-action btn-blue" id="managerShiftArchiveBtn" onclick="openManagerShiftArchive()" style="display:none"><i class="fa-solid fa-box-archive"></i> أرشيف الشيفت</button>
 <button class="btn-action btn-purple" onclick="openAccountsProfits()"><i class="fa-solid fa-chart-line"></i> حسابات وأرباح</button>
 <button class="btn-action btn-purple" onclick="toggleDarkMode()"><i class="fa-solid fa-moon" id="darkModeIcon"></i></button>
@@ -2482,13 +2482,63 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       document.getElementById('darkModeIcon').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
     }
 
-    function logout() {
-      // تسجيل الخروج اليدوي يمسح الدور المحفوظ لهذا الجهاز.
-      Object.keys(localStorage).filter(k => k.startsWith('nonRememberedRole_')).forEach(k => localStorage.removeItem(k));
-      Object.keys(sessionStorage).filter(k => k.startsWith('nonManagerAuthenticated_') || k.startsWith('nonCashierAuthenticated_')).forEach(k => sessionStorage.removeItem(k));
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('currentRolePage');
-      window.location.href = 'login.html';
+    async function logout() {
+      if (!confirm('تأكيد الخروج؟ سيتم تقفيل الشيفت وترحيل رصيد خزينة الشيفت إلى إجمالي الخزينة العام ثم تصفيرها.')) return;
+      const btn = document.querySelector('.header-bar button[onclick="logout()"]');
+      if (btn) { btn.disabled = true; btn.dataset.oldText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تقفيل اليوم...'; }
+      try {
+        if (typeof db === 'undefined' || !db) throw new Error('اتصال قاعدة البيانات غير متاح؛ لم يتم تسجيل الخروج حتى لا يضيع رصيد الشيفت.');
+        const now = new Date().toISOString();
+        const rawUser = localStorage.getItem('currentUser') || 'المحاسب';
+        let userInfo = {};
+        try { const parsed = JSON.parse(rawUser); if (parsed && typeof parsed === 'object') userInfo = parsed; } catch (_) {}
+        const username = String(localStorage.getItem('currentUsername') || userInfo.username || userInfo.userName || rawUser).trim();
+        const activeShiftKey = Object.keys(localStorage).find(k => k.startsWith('activeEmployeeShift_') && (() => { try { const x=JSON.parse(localStorage.getItem(k)||'null'); return x && x.status==='open'; } catch (_) { return false; } })());
+        const shift = activeShiftKey ? JSON.parse(localStorage.getItem(activeShiftKey) || 'null') : null;
+        const shiftBoxRef = db.collection('treasuries').doc('shift_cashbox');
+        const treasurySnap = await db.collection('treasuries').get();
+        let generalDoc = treasurySnap.docs.find(d => {
+          const x=d.data()||{};
+          return !x.isShiftTreasury && (d.id==='general_treasury'||x.isDefault||x.isMain||x.defaultTreasury||/^(الخزينة العامة|الخزينة الرئيسية الافتراضية|الخزينة الرئيسية|خزينة رئيسية|الخزينة الافتراضية)$/i.test(String(x.name||'').trim()));
+        });
+        if (!generalDoc) {
+          const ref=db.collection('treasuries').doc('general_treasury');
+          await ref.set({name:'الخزينة العامة',balance:0,isDefault:true,createdAt:now,updatedAt:now},{merge:true});
+          generalDoc=await ref.get();
+        }
+        const generalRef=db.collection('treasuries').doc(generalDoc.id);
+        const closeKey = String((shift && shift.id) || (username+'_'+Date.now())).replace(/[^a-zA-Z0-9_-]/g,'_');
+        const closeRef=db.collection('cash_shift_closings').doc(closeKey);
+        const movementRef=db.collection('treasury_transactions').doc('shift_close_'+closeKey);
+        let transferred=0;
+        await db.runTransaction(async tx => {
+          const [closeSnap,shiftSnap,generalSnap]=await Promise.all([tx.get(closeRef),tx.get(shiftBoxRef),tx.get(generalRef)]);
+          if (closeSnap.exists) { transferred=Number(closeSnap.data().transferredAmount)||0; return; }
+          const shiftBalance=Number((shiftSnap.data()||{}).balance)||0;
+          const generalBalance=Number((generalSnap.data()||{}).balance)||0;
+          transferred=shiftBalance;
+          tx.set(shiftBoxRef,{name:'خزينة الشيفت',isShiftTreasury:true,balance:0,updatedAt:now,lastClosedAt:now,closedBy:username},{merge:true});
+          tx.set(generalRef,{balance:generalBalance+shiftBalance,updatedAt:now,lastShiftTransferAt:now},{merge:true});
+          tx.set(closeRef,{username,employeeName:userInfo.fullName||userInfo.name||username,shiftId:shift?.id||null,closedAt:now,transferredAmount:shiftBalance,generalTreasuryId:generalDoc.id,status:'closed'},{merge:true});
+          tx.set(movementRef,{type:'ترحيل رصيد خزينة الشيفت عند الخروج',direction:'transfer',amount:shiftBalance,fromTreasuryId:'shift_cashbox',toTreasuryId:generalDoc.id,createdAt:now,dateFormatted:new Date(now).toLocaleString('ar-EG'),cashier:username,notes:'تقفيل تلقائي للشيفت عند تسجيل الخروج',shiftId:shift?.id||null},{merge:true});
+        });
+        const verifyShiftBox=await shiftBoxRef.get();
+        if (Math.abs(Number((verifyShiftBox.data()||{}).balance)||0)>0.000001) throw new Error('خزينة الشيفت لم تصبح فارغة؛ تم إيقاف تسجيل الخروج.');
+        if (shift && shift.id) {
+          await db.collection('employee_shifts').doc(shift.id).set({status:'closed',closedAt:now,cashTransferredToGeneral:true,cashTransferredAmount:transferred,closedBy:username},{merge:true});
+          if (activeShiftKey) localStorage.removeItem(activeShiftKey);
+        }
+        window.loadFinancialStats?.();
+        Object.keys(localStorage).filter(k => k.startsWith('nonRememberedRole_')).forEach(k => localStorage.removeItem(k));
+        Object.keys(sessionStorage).filter(k => k.startsWith('nonManagerAuthenticated_') || k.startsWith('nonCashierAuthenticated_')).forEach(k => sessionStorage.removeItem(k));
+        ['currentUser','currentRolePage','currentRole','currentPermissions','currentUserId','currentUsername','currentUserStatus','currentLandingPage','loginTimestamp'].forEach(k=>localStorage.removeItem(k));
+        alert('تم تقفيل اليوم وترحيل '+transferred.toLocaleString('ar-EG')+' إلى إجمالي الخزينة العام وتصفير خزينة الشيفت.');
+        window.location.href = 'login.html';
+      } catch (e) {
+        console.error(e);
+        alert('تعذر تقفيل اليوم أو ترحيل الرصيد: '+(e.message||e)+'\nلم يتم تسجيل الخروج. حاول مرة أخرى.');
+        if (btn) { btn.disabled=false; btn.innerHTML=btn.dataset.oldText||'خروج'; }
+      }
     }
 
     const firebaseConfig = {
@@ -7031,6 +7081,55 @@ function createClientSupplierHub(){
    return String(v||'').trim();
  }
  function shiftEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+ async function transferShiftBalanceToGeneral(reason, shift, transferKey){
+   if(typeof db==='undefined'||!db) throw new Error('اتصال قاعدة البيانات غير متاح؛ لم يتم تصفير خزينة الشيفت.');
+   const now=new Date().toISOString();
+   const raw=localStorage.getItem('currentUser')||'المحاسب';
+   let u={};try{const p=JSON.parse(raw);if(p&&typeof p==='object')u=p;}catch(_){}
+   const username=String(u.username||u.userName||u.fullName||u.name||raw||'المحاسب').trim();
+   const shiftRef=db.collection('treasuries').doc('shift_cashbox');
+   const all=await db.collection('treasuries').get();
+   let general=all.docs.find(d=>{const x=d.data()||{};return !x.isShiftTreasury&&(d.id==='general_treasury'||x.isDefault||x.isMain||x.defaultTreasury||/^(الخزينة العامة|الخزينة الرئيسية الافتراضية|الخزينة الرئيسية|خزينة رئيسية|الخزينة الافتراضية)$/i.test(String(x.name||'').trim()));});
+   if(!general) general=all.docs.find(d=>!(d.data()||{}).isShiftTreasury);
+   if(!general){
+     const gr=db.collection('treasuries').doc('general_treasury');
+     await gr.set({name:'الخزينة العامة',balance:0,isDefault:true,createdAt:now,updatedAt:now},{merge:true});
+     general=await gr.get();
+   }
+   const generalRef=db.collection('treasuries').doc(general.id);
+   const transferRef=db.collection('cash_shift_transfers').doc(String(transferKey).replace(/[^a-zA-Z0-9_-]/g,'_'));
+   const movementRef=db.collection('treasury_transactions').doc('shift_transfer_'+String(transferKey).replace(/[^a-zA-Z0-9_-]/g,'_'));
+   let moved=0;
+   await db.runTransaction(async tx=>{
+     const [shiftSnap,generalSnap,transferSnap]=await Promise.all([tx.get(shiftRef),tx.get(generalRef),tx.get(transferRef)]);
+     if(transferSnap.exists){moved=Number(transferSnap.data()?.amount)||0;return;}
+     const current=Number((shiftSnap.data()||{}).balance)||0;
+     const generalBalance=Number((generalSnap.data()||{}).balance)||0;
+     moved=current;
+     tx.set(shiftRef,{name:'خزينة الشيفت',isShiftTreasury:true,balance:0,updatedAt:now,lastTransferredAt:now,transferredBy:username},{merge:true});
+     if(current!==0) tx.set(generalRef,{balance:generalBalance+current,updatedAt:now,lastShiftTransferAt:now},{merge:true});
+     tx.set(transferRef,{amount:current,reason,username,employeeName:u.fullName||u.name||username,shiftId:shift?.id||null,fromTreasuryId:'shift_cashbox',toTreasuryId:general.id,createdAt:now,status:'completed'},{merge:true});
+     if(current!==0) tx.set(movementRef,{type:'ترحيل رصيد خزينة الشيفت',direction:'transfer',amount:current,fromTreasuryId:'shift_cashbox',toTreasuryId:general.id,createdAt:now,dateFormatted:new Date(now).toLocaleString('ar-EG'),cashier:username,employeeName:u.fullName||u.name||username,shiftId:shift?.id||null,notes:reason},{merge:true});
+   });
+   const verify=await shiftRef.get();
+   const remaining=Number((verify.data()||{}).balance)||0;
+   if(Math.abs(remaining)>0.000001) throw new Error('لم يتم تصفير خزينة الشيفت. الرصيد المتبقي: '+remaining);
+   window.loadFinancialStats?.();
+   return moved;
+ }
+ window.transferCashierShiftBalance=async function(){
+   if(String(window.nonCurrentRole||'').toLowerCase()!=='cashier'){alert('هذا الزر مخصص لحساب الكاشير.');return;}
+   const btn=document.getElementById('cashierTransferShiftBtn');
+   if(btn){btn.disabled=true;btn.dataset.oldText=btn.innerHTML;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> جاري الترحيل...';}
+   try{
+     const shift=readActiveEmployeeShift();
+     const key='manual_'+(shift?.id||employeeShiftName())+'_'+Date.now();
+     const amount=await transferShiftBalanceToGeneral('ترحيل يدوي من صفحة الكاشير',shift,key);
+     alert('تم ترحيل '+amount.toLocaleString('ar-EG')+' جنيه إلى الخزينة العامة وتصفير خزينة الشيفت. يمكنك بدء العمل من رصيد صفر.');
+   }catch(e){alert('تعذر ترحيل الرصيد: '+(e.message||e));}
+   finally{if(btn){btn.disabled=false;btn.innerHTML=btn.dataset.oldText||'<i class="fa-solid fa-arrow-right-arrow-left"></i> ترحيل رصيد الشيفت للخزينة العامة';}}
+ };
  window.startEmployeeShift=async function(){
    const name=employeeShiftName(), key=employeeShiftStorageKey();
    const local=readActiveEmployeeShift();
@@ -7046,6 +7145,8 @@ function createClientSupplierHub(){
        alert('تم العثور على شيفت مفتوح محفوظ بالفعل لهذا الموظف.');return;
      }
      const ref=db.collection('employee_shifts').doc();
+     // أي رصيد متبقٍ من الشيفت السابق يُرحّل أولاً قبل بدء شيفت جديد.
+     await transferShiftBalanceToGeneral('ترحيل الرصيد السابق عند بدء شيفت جديد',null,'start_'+ref.id);
      const startedAt=new Date();const shift={id:ref.id,employeeId:employeeShiftUserId||'',employeeName:name,status:'open',startAt:startedAt.toISOString(),startTimestamp:startedAt.getTime(),plannedHours:employeeShiftHours||6,plannedEndAt:new Date(startedAt.getTime()+(employeeShiftHours||6)*3600000).toISOString(),createdAt:startedAt.toISOString()};
      await ref.set(shift);
      localStorage.setItem(key,JSON.stringify(shift));
@@ -7088,34 +7189,19 @@ function createClientSupplierHub(){
        if(/نقد|كاش|cash/.test(method))drawerTotal+=(isOut?-1:1)*amount;
      });
      let closingNumber=1000;try{const counterRef=db.collection('daily_closing_counters').doc('main');await db.runTransaction(async tx=>{const snap=await tx.get(counterRef);const current=Number(snap.exists?snap.data().lastNumber:999)||999;closingNumber=Math.max(1000,current+1);tx.set(counterRef,{lastNumber:closingNumber,updatedAt:endAt},{merge:true});});}catch(counterErr){const localNum=Math.max(999,Number(localStorage.getItem('daily_closing_last_number')||999));closingNumber=localNum+1;localStorage.setItem('daily_closing_last_number',String(closingNumber));}
-     // ترحيل صافي خزينة الشيفت إلى الخزينة العامة ثم تصفير خزينة الشيفت.
-     // يتم تسجيل رقم الشيفت داخل مستند الترحيل لمنع تكرار الإضافة عند إعادة المحاولة.
-     const shiftBoxRef=db.collection('treasuries').doc('shift_cashbox');
-     const treasurySnap=await db.collection('treasuries').get();
-     let generalDoc=treasurySnap.docs.find(d=>{const x=d.data()||{};return !x.isShiftTreasury && (x.isDefault||x.isMain||x.defaultTreasury||/^(الخزينة الرئيسية الافتراضية|الخزينة الرئيسية|خزينة رئيسية|الخزينة الافتراضية)$/i.test(String(x.name||'').trim()));});
-     if(!generalDoc) generalDoc=treasurySnap.docs.find(d=>!(d.data()||{}).isShiftTreasury);
-     if(!generalDoc){const ref=db.collection('treasuries').doc('general_treasury');await ref.set({name:'الخزينة العامة',balance:0,isDefault:true,createdAt:endAt,updatedAt:endAt});generalDoc=await ref.get();}
-     const generalRef=db.collection('treasuries').doc(generalDoc.id);
-     await db.runTransaction(async tx=>{
-       const closingRef=db.collection('employee_shifts').doc(shift.id);
-       const [closingSnap,shiftBoxSnap,generalSnap]=await Promise.all([tx.get(closingRef),tx.get(shiftBoxRef),tx.get(generalRef)]);
-       if(closingSnap.exists && closingSnap.data()?.cashTransferredToGeneral) return;
-       const amount=Number(drawerTotal)||0;
-       const currentShift=Number((shiftBoxSnap.data()||{}).balance)||0;
-       const currentGeneral=Number((generalSnap.data()||{}).balance)||0;
-       // قيمة الشيفت المحسوبة من حركاته هي المرجع عند وجودها؛ وإلا يُرحّل الرصيد المسجل بالخزينة الثابتة.
-       const transferAmount=amount!==0?amount:currentShift;
-       tx.set(shiftBoxRef,{name:'خزينة الشيفت',isShiftTreasury:true,balance:0,updatedAt:endAt},{merge:true});
-       tx.set(generalRef,{balance:currentGeneral+transferAmount,updatedAt:endAt},{merge:true});
-       tx.set(closingRef,{cashTransferredToGeneral:true,cashTransferredAmount:transferAmount,cashTransferredAt:endAt},{merge:true});
-     });
+     // ترحيل الرصيد الفعلي المسجل في خزينة الشيفت للخزينة العامة قبل إغلاق اليومية.
+     const transferredAtClose=await transferShiftBalanceToGeneral('ترحيل رصيد خزينة الشيفت عند تقفيل اليومية',shift,'daily_close_'+shift.id);
+     const shiftBalanceCheck=await db.collection('treasuries').doc('shift_cashbox').get();
+     if(Math.abs(Number((shiftBalanceCheck.data()||{}).balance)||0)>0.000001){
+       throw new Error('لا يمكن إكمال تقفيل اليومية أو تسجيل الخروج قبل أن تصبح خزينة الشيفت فارغة.');
+     }
      const report={
        id:shift.id,closingNumber:Number(closingNumber),employeeName:shift.employeeName,startAt:shift.startAt,endAt,
        deposits,withdrawals,expenses,
        totalDeposits:deposits.reduce((a,x)=>a+(Number(x.amount??x.paidAmount??x.paymentAmount)||0),0),
        totalWithdrawals:withdrawals.reduce((a,x)=>a+(Number(x.amount??x.expenseAmount??x.paidAmount)||0),0),
        totalExpenses:expenses.reduce((a,x)=>a+(Number(x.amount)||0),0),
-       drawerTotal,transactionCount:transactions.length,expenseCount:expenses.length
+       drawerTotal,transferredToGeneral:transferredAtClose,transactionCount:transactions.length,expenseCount:expenses.length
      };
      await db.collection('employee_shifts').doc(shift.id).set({...report,status:'closed',closedAt:endAt},{merge:true});
      const old=JSON.parse(localStorage.getItem('daily_closings')||'[]');old.push({id:shift.id,employeeName:shift.employeeName,date:endAt,totalDeposits:report.totalDeposits,totalWithdrawals:report.totalWithdrawals,totalExpenses:report.totalExpenses,drawerTotal:report.drawerTotal});localStorage.setItem('daily_closings',JSON.stringify(old));
@@ -7124,6 +7210,8 @@ function createClientSupplierHub(){
      window.loadFinancialStats?.();
      alert('تم تقفيل اليومية رقم '+closingNumber+' وحفظها. سيتم طباعة التقرير ثم العودة لتسجيل الدخول.');
      window.printEmployeeShiftReport(report,reportWindow);
+     const finalCashCheck=await db.collection('treasuries').doc('shift_cashbox').get();
+     if(Math.abs(Number((finalCashCheck.data()||{}).balance)||0)>0.000001) throw new Error('خزينة الشيفت ليست فارغة؛ تم إيقاف تسجيل الخروج.');
      setTimeout(()=>{try{localStorage.removeItem('currentUser');localStorage.removeItem('currentRolePage');sessionStorage.removeItem('non_admin_unlocked');window.location.href='login.html';}catch(_){window.location.href='login.html';}},1800);
    }catch(e){alert('تعذر تقفيل اليومية: '+(e.message||e));}
  };
@@ -8070,7 +8158,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
  const readRoles=()=>{try{return JSON.parse(localStorage.getItem('nonAutoRoles')||'{}')||{}}catch(_){return {}}};
  const roles=readRoles();
  let assignment=roles[identity]||null;
- let role=String(assignment?.role||user.role||user.accountType||'cashier').toLowerCase();
+ let role=String(localStorage.getItem('currentRole')||assignment?.role||user.role||user.accountType||'cashier').toLowerCase();
  if(['admin','administrator','مدير','مدير النظام'].includes(role))role='manager';
  if(['viewer','مشاهد','مشاهد فقط','view'].includes(role))role='viewer';
  if(['cashier','كاشير','محاسب','accountant'].includes(role))role='cashier';
@@ -8089,40 +8177,6 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    if(entered!==expected){alert('كلمة سر المدير غير صحيحة.');return false;}
    return true;
  }
- window.openNonPermissionsManager=function(){
-   if(!pinManager())return;
-   const target=prompt('اكتب اسم المستخدم أو اسم الحساب الذي تريد تعيين صلاحية له:',identity);
-   if(target===null||!target.trim())return;
-   const key=target.trim().toLowerCase();
-   const roleChoice=prompt('اختر نوع الحساب بكتابة الرقم:\n1 = مدير (كل الصلاحيات)\n2 = كاشير / محاسب\n3 = مشاهد فقط','2');
-   if(roleChoice===null)return;
-   const selectedRole=({'1':'manager','2':'cashier','3':'viewer'})[roleChoice.trim()];
-   if(!selectedRole){alert('اختيار غير صحيح.');return;}
-   const all=readRoles();
-   const record={role:selectedRole,updatedAt:new Date().toISOString(),updatedBy:identity};
-   if(selectedRole==='cashier'){
-     const cashierPin=prompt('حدد كلمة سر الكاشير لهذا الحساب (اتركها فارغة لاستخدام 1234):','1234');
-     if(cashierPin===null)return;
-     record.cashierPin=cashierPin.trim()||'1234';
-   }
-   all[key]=record;localStorage.setItem('nonAutoRoles',JSON.stringify(all));
-   (async()=>{
-     try{
-       if(typeof db==='undefined')throw new Error('Firebase/Firestore غير متاح');
-       const now=new Date().toISOString();
-       const perms=selectedRole==='manager'?{view:true,add:true,edit:true,delete:true,print:true,manage:true}:
-         selectedRole==='cashier'?{view:true,add:true,edit:false,delete:false,print:true,manage:false}:
-         {view:true,add:false,edit:false,delete:false,print:true,manage:false};
-       await db.collection('user_roles').doc(key).set({...record,username:target.trim(),permissions:perms,updatedAt:now},{merge:true});
-       let q=await db.collection('users').where('username','==',target.trim()).limit(1).get();
-       if(q.empty)q=await db.collection('users').where('userName','==',target.trim()).limit(1).get();
-       if(q.empty)q=await db.collection('users').where('email','==',target.trim()).limit(1).get();
-       if(!q.empty)await q.docs[0].ref.set({role:selectedRole,accountType:selectedRole,permissions:perms,cashierPin:record.cashierPin||null,updatedAt:now},{merge:true});
-       alert('تم حفظ حساب '+(selectedRole==='manager'?'المدير':'الكاشير')+' وصلاحياته على السيرفر بنجاح.');
-     }catch(e){console.error(e);alert('تعذر حفظ الحساب على السيرفر: '+(e.message||e));}
-   })();
-   if(key===identity){window.nonCurrentRole=selectedRole;applyRoleUI();}
- };
  window.changeNonManagerPin=function(){
    if(!pinManager())return;
    const next=prompt('أدخل كلمة سر المدير الجديدة:');
@@ -8136,9 +8190,9 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    document.body.classList.toggle('non-role-cashier',r==='cashier');
    const hide=(sel)=>document.querySelectorAll(sel).forEach(el=>el.style.display='none');
    const show=(sel)=>document.querySelectorAll(sel).forEach(el=>el.style.display='');
-   const managerBtn=$('managePermissionsBtn');if(managerBtn)managerBtn.style.display=r==='manager'?'':'none';
-   const pinBtn=$('changeManagerPinBtn');if(pinBtn)pinBtn.style.display=r==='manager'?'':'none';
+     const pinBtn=$('changeManagerPinBtn');if(pinBtn)pinBtn.style.display=r==='manager'?'':'none';
    if(r==='manager')return;
+   const cashierTransferBtn=document.getElementById('cashierTransferShiftBtn');if(cashierTransferBtn)cashierTransferBtn.style.display=(r==='cashier'?'inline-flex':'none');
    if(r==='cashier'){
      ['treasury','workers','archive'].forEach(k=>hide('[data-quick="'+k+'"]'));
      hide('[onclick="openSalesDaily()"],[onclick="openAccountsProfits()"],[onclick="openSummaryTransfers()"],#customizeQuickActionsBtn');
@@ -8148,7 +8202,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    // المشاهد: عرض وطباعة فقط.
    ['maintenance','treasury','expenses','workers','advance-payment','collections','suppliers'].forEach(k=>hide('[data-quick="'+k+'"]'));
    const hubSupplierButton=document.querySelector('#clientSupplierHubModal [data-hub-suppliers="1"]');if(hubSupplierButton)hubSupplierButton.style.display='none';
-   hide('[onclick="openSalesDaily()"],[onclick="openAccountsProfits()"],[onclick="openSummaryTransfers()"],#customizeQuickActionsBtn,#managePermissionsBtn,#startShiftBtn');
+   hide('[onclick="openSalesDaily()"],[onclick="openAccountsProfits()"],[onclick="openSummaryTransfers()"],#customizeQuickActionsBtn,#startShiftBtn');
    document.querySelectorAll('button').forEach(b=>{
      const a=b.getAttribute('onclick')||'';
      const allow=/openArchiveModal|openClientAccountsModal|openClientSupplierHub|openClientLifeStatement|openServiceModal\\('invoicesServiceModal'\\)|openArchivedInvoice|print|close|logout|toggleDarkMode/.test(a);
@@ -8192,7 +8246,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    }
    // استعادة آخر دور تم التحقق منه على نفس الجهاز حتى لا تظهر شاشة الاختيار بعد كل تحديث.
    let rememberedRole=localStorage.getItem('nonRememberedRole_'+identity);
-   const assignedRaw=String(assignment?.role||user.role||user.accountType||'').toLowerCase();
+   const assignedRaw=String(localStorage.getItem('currentRole')||assignment?.role||user.role||user.accountType||'').toLowerCase();
    const assignedRole=['admin','administrator','مدير','مدير النظام'].includes(assignedRaw)?'manager':
      (['cashier','كاشير','محاسب','accountant'].includes(assignedRaw)?'cashier':
      (['viewer','مشاهد','مشاهد فقط','view'].includes(assignedRaw)?'viewer':''));
@@ -8202,8 +8256,10 @@ function printClientLifeStatement(){const content=document.getElementById('clien
      localStorage.removeItem('nonRememberedRole_'+identity);
      rememberedRole=null;
    }
-   if(rememberedRole==='manager'||rememberedRole==='cashier'){
-     window.nonCurrentRole=rememberedRole;
+   if(assignedRole==='manager'||assignedRole==='cashier'){
+     rememberedRole=assignedRole;
+     localStorage.setItem('nonRememberedRole_'+identity,assignedRole);
+     window.nonCurrentRole=assignedRole;
      applyRoleUI();
      const badge=$('userBadge');
      if(badge)badge.innerHTML=rememberedRole==='manager'
