@@ -522,7 +522,7 @@
             <button class="btn-action-sm btn-danger global-delete-btn" id="btnDeleteServices" onclick="deleteSelectedItemsGeneric('installation_services')"><i class="fa-solid fa-trash"></i> حذف المحدد</button>
           </div>
         </div>
-        <div class="form-field" style="margin-bottom: 10px;"><input type="text" id="searchServicesInput" onkeyup="filterServicesTable()" placeholder="🔍 بحث عن خدمة..."></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button class="btn-action-sm btn-success" type="button" onclick="loadDirectMaintenanceCatalog()">تحديث أصناف الصيانة المباشرة</button></div><div id="directMaintenanceCatalogPanel" style="display:none;margin:8px 0;padding:10px;border:1px solid var(--border-color);border-radius:8px"><b>أصناف الصيانة المباشرة من المخزن</b><div style="overflow:auto"><table><thead><tr><th>الصنف</th><th>سعر المخزن</th><th>الإجراء</th></tr></thead><tbody id="directMaintenanceCatalogRows"></tbody></table></div></div><div class="form-field" style="margin-bottom: 10px;"><input type="text" id="searchServicesInput" onkeyup="filterServicesTable()" placeholder="🔍 بحث عن خدمة..."></div>
         <div style="overflow-x: auto;">
           <table id="servicesTable">
             <thead><tr><th style="width:30px;"><input type="checkbox" onclick="toggleSelectAllGeneric(this, 'service-checkbox')"></th><th>اسم الخدمة</th><th>رسوم الخدمة</th><th>الملاحظات</th><th>تاريخ الإضافة</th><th>إجراء</th></tr></thead>
@@ -1555,7 +1555,7 @@
             <td style="font-weight:700; color:var(--btn-green);">${item.servicePrice} ج.م</td>
             <td>${item.notes || '---'}</td>
             <td>${(item.dateStr || '').substring(0, 10)}</td>
-            <td>${deleteBtnHtml}</td>
+            <td><button class="btn-action-sm btn-blue" onclick="editInstallationService('${item.id}')">تعديل الخدمة والصيانة</button> ${deleteBtnHtml}</td>
           </tr>
         `;
       });
@@ -1584,7 +1584,7 @@
             <td style="font-weight:700; color:var(--btn-green);">${item.servicePrice} ج.م</td>
             <td>${item.notes || '---'}</td>
             <td>${(item.dateStr || '').substring(0, 10)}</td>
-            <td>${deleteBtnHtml}</td>
+            <td><button class="btn-action-sm btn-blue" onclick="editInstallationService('${item.id}')">تعديل الخدمة والصيانة</button> ${deleteBtnHtml}</td>
           </tr>
         `;
       });
@@ -2456,6 +2456,7 @@
 
 
 
+
 </body></html>`);w.document.close();}
 function printProductsBySearch(){const list=getInventorySearchResults();const any=['searchInventoryInput','searchCompanyFilter','searchSupplierFilter','searchItemFilter','searchDepartmentFilter','searchDateFilter'].some(id=>(document.getElementById(id)?.value||'').trim());if(!any){alert('أدخل معيار بحث واحدًا على الأقل قبل الطباعة.');return;}if(!list.length){alert('لا توجد منتجات مطابقة لمعايير البحث.');return;}let body='<div class="summary">عدد النتائج: '+list.length+'</div><table><thead><tr><th>م</th><th>المخزن</th><th>القسم</th><th>الصنف</th><th>الفرع</th><th>المورد / التاجر</th><th>الباركود</th><th>الكمية</th><th>سعر الشراء</th><th>سعر البيع</th><th>الصلاحية / التاريخ</th></tr></thead><tbody>'+list.map((x,i)=>`<tr><td>${i+1}</td><td>${escSupplier(x.storeName||'')}</td><td>${escSupplier(x.category||x.department||'')}</td><td>${escSupplier(x.name||'')}</td><td>${escSupplier(x.brand||x.companyName||'')}</td><td>${escSupplier(x.supplierName||'')}</td><td>${escSupplier(x.barcode||x.code||'')}</td><td>${Number(x.qty||0)}</td><td>${Number(x.buyPrice||0).toFixed(2)}</td><td>${Number(x.sellPrice||0).toFixed(2)}</td><td>${escSupplier(x.expiryDate||x.date||'')}</td></tr>`).join('')+'</tbody></table>';printHtmlReport('نتائج البحث في المخزن',body);}
 function viewStoreItems(storeName){storeName=decodeURIComponent(storeName);let list=(cachedInventory||[]).filter(i=>(i.storeName||'مخزن المحل الرئيسي')===storeName);let body='<div class="summary">المخزن: '+escSupplier(storeName)+' | عدد الأصناف: '+list.length+' | إجمالي الكمية: '+list.reduce((n,x)=>n+Number(x.qty||0),0)+'</div><table><thead><tr><th>م</th><th>كود الصنف</th><th>اسم الصنف</th><th>الكمية</th><th>سعر الشراء</th><th>سعر البيع</th></tr></thead><tbody>'+list.map((x,i)=>`<tr><td>${i+1}</td><td>${escSupplier(x.barcode||x.code||'—')}</td><td>${escSupplier(x.name||'')}</td><td>${Number(x.qty||0)}</td><td>${Number(x.buyPrice||0).toFixed(2)}</td><td>${Number(x.sellPrice||0).toFixed(2)}</td></tr>`).join('')+'</tbody></table>';document.getElementById('generalLogModalTitle').textContent='أصناف '+storeName;document.getElementById('generalLogTableContainer').innerHTML=body;let oldPrint=document.getElementById('storePrintActions');if(oldPrint)oldPrint.remove();let safeStore=String(storeName).replace(/\\/g,'\\\\').replace(/'/g,"\\'");let actions=document.createElement('div');actions.id='storePrintActions';actions.style.cssText='display:grid;gap:7px;margin-bottom:8px';actions.innerHTML='<button class="btn-action-sm btn-success" onclick="printStoreItems(\''+safeStore+'\',\'both\')">طباعة قائمة المخزن (بالأسعار)</button><button class="btn-action-sm btn-blue" onclick="printStoreItems(\''+safeStore+'\',\'buy\')">طباعة بسعر الشراء</button><button class="btn-action-sm btn-primary" onclick="printStoreItems(\''+safeStore+'\',\'sell\')">طباعة بسعر البيع</button><button class="btn-action-sm btn-gold" onclick="printStoreItems(\''+safeStore+'\',\'none\')">طباعة بدون أسعار</button>';let closeBtn=document.querySelector('#generalLogModal button[onclick*="generalLogModal"]');if(closeBtn)closeBtn.insertAdjacentElement('beforebegin',actions);document.getElementById('generalLogModal').style.display='flex';}
@@ -2905,6 +2906,7 @@ function supplierOrderPayment(id){let a=supplierRead('supplier_issue_orders'),x=
 function printSupplierOrder(id){let x=supplierRead('supplier_issue_orders').find(y=>y.id===id);if(!x)return;let w=window.open('','_blank');if(!w){alert('اسمح بفتح النوافذ المنبثقة للطباعة');return;}w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>إذن توريد ${escSupplier(x.orderNo)}</title><style>body{font-family:Tahoma,Arial;padding:25px;color:#111}h1,h2{text-align:center}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #444;padding:9px;text-align:right}th{background:#eee}.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;border:1px solid #aaa;padding:12px}footer{display:flex;justify-content:space-between;margin-top:60px}</style></head><body><h1>مركز أوتو نون (NON)</h1><h2>إذن توريد مخزني</h2><div class="meta"><div>رقم الإذن: <b>${escSupplier(x.orderNo)}</b></div><div>التاريخ: ${new Date(x.date).toLocaleString('ar-EG')}</div><div>كود المورد: ${escSupplier((supplierRead('suppliers_list').find(z=>z.id===x.supplierId)||{}).code||'')}</div><div>اسم المورد: ${escSupplier(x.supplierName)}</div></div><table><thead><tr><th>م</th><th>كود الصنف / الباركود</th><th>اسم الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${x.lines.map((l,i)=>`<tr><td>${i+1}</td><td>${escSupplier(l.code||l.barcode||'')}</td><td>${escSupplier(l.name)}</td><td>${l.qty}</td><td>${Number(l.price).toFixed(2)}</td><td>${Number(l.total).toFixed(2)}</td></tr>`).join('')}</tbody></table><h3>الإجمالي: ${Number(x.total).toFixed(2)} ج.م | المدفوع: ${Number(x.paid||0).toFixed(2)} ج.م | المستحق: ${Number(x.remaining||0).toFixed(2)} ج.م</h3><footer><span>توقيع المورد: ...................</span><span>أمين المخزن: ...................</span><span>اعتماد الإدارة: ...................</span></footer><script>window.onload=()=>window.print()<\/script>
 
 
+
 </body></html>`);w.document.close();}
 function showSupplierItems(id){let sup=supplierRead('suppliers_list').find(x=>x.id===id);if(!sup)return;let orders=supplierRead('supplier_issue_orders').filter(o=>o.supplierId===id),map=new Map();orders.forEach(o=>(o.lines||[]).forEach(l=>{let key=l.itemId||l.code||l.name,cur=map.get(key)||{code:l.code||l.barcode||'',name:l.name||'',qty:0,buy:Number(l.price||0),sell:0,date:o.date};cur.qty+=Number(l.qty||0);cur.date=o.date||cur.date;map.set(key,cur);}));(cachedInventory||[]).filter(i=>i.supplierId===id||i.supplierName===sup.name).forEach(i=>{let key=i.id||i.barcode||i.name,cur=map.get(key)|| {code:i.barcode||i.code||'',name:i.name||'',qty:0,buy:Number(i.buyPrice||0),sell:Number(i.sellPrice||0),date:''};cur.name=i.name||cur.name;cur.code=i.barcode||i.code||cur.code;cur.sell=Number(i.sellPrice||cur.sell||0);cur.buy=Number(i.buyPrice||cur.buy||0);cur.qty=Number(i.qty??cur.qty);map.set(key,cur);});let returns=supplierRead('supplier_returns').filter(r=>r.supplierId===id),retTotal=returns.reduce((n,r)=>n+Number(r.qty||0)*Number((cachedInventory||[]).find(i=>i.id===r.itemId)?.sellPrice||r.sellPrice||0),0),list=[...map.values()];let body=`<div class="summary">المورد: ${escSupplier(sup.name)} | إجمالي المرتجعات بسعر البيع × الكمية: ${retTotal.toFixed(2)} ج.م</div><table><thead><tr><th>م</th><th>اسم الصنف</th><th>كود الصنف</th><th>الكمية</th><th>تاريخ التوريد</th><th>سعر البيع</th><th>سعر الشراء</th></tr></thead><tbody>${list.map((x,i)=>`<tr><td>${i+1}</td><td>${escSupplier(x.name)}</td><td>${escSupplier(x.code||'—')}</td><td>${Number(x.qty||0)}</td><td>${x.date?new Date(x.date).toLocaleDateString('ar-EG'):'—'}</td><td>${Number(x.sell||0).toFixed(2)}</td><td>${Number(x.buy||0).toFixed(2)}</td></tr>`).join('')||'<tr><td colspan="7">لا توجد أصناف مسجلة لهذا المورد.</td></tr>'}</tbody></table>`;printHtmlReport('أصناف المورد: '+sup.name,body);}
 function renderSupplierReturnHistory(){
@@ -3034,6 +3036,7 @@ function printGeneratedBarcode(code){
   w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>باركود ${code}</title><style>body{font-family:Tahoma,Arial;text-align:center;padding:25px}.label{width:75mm;margin:20px auto;padding:12px;border:1px dashed #999}svg{max-width:100%}.serial{font-size:18px;font-weight:bold;margin-top:8px}@media print{@page{size:80mm 50mm;margin:4mm}}</style></head><body><div class="label"><h3>مركز أوتو نون (NON)</h3>${svg||`<div style="font-size:22px;letter-spacing:2px">${code}</div>`}<div class="serial">${code}</div></div><script>window.onload=()=>window.print()<\/script>
 
 
+
 </body></html>`);
   w.document.close();
 }
@@ -3098,6 +3101,33 @@ window.addEventListener('load',()=>{refreshManualShortageOptions();});
  async function login(){const user=document.getElementById('supplierPortalUser').value.replace(/\D/g,''),pass=document.getElementById('supplierPortalPass').value;if(!user||!pass){msg.textContent='اكتب اسم المستخدم وكلمة المرور.';return;}const btn=document.getElementById('supplierPortalLoginBtn');btn.disabled=true;try{if(!window.firebase||!firebase.auth||!firebase.firestore)throw Error('خدمة تسجيل الدخول غير متاحة');const cred=await firebase.auth().signInWithEmailAndPassword(user+'@suppliers.auto-non.local',pass);const snap=await firebase.firestore().collection('suppliers').where('portalUsername','==',user).limit(1).get();if(snap.empty)throw Error('لم يتم العثور على ملف المورد المرتبط بالحساب.');const doc=snap.docs[0],profile={id:doc.id,...doc.data()};if(profile.authUid&&profile.authUid!==cred.user.uid)throw Error('هذا الحساب غير مرتبط بملف المورد.');if(profile.portalEnabled===false||profile.active===false)throw Error('تم إيقاف حساب المورد.');await loadDashboard(profile,cred.user.uid);}catch(e){console.error(e);msg.style.color='#b91c1c';msg.textContent='تعذر تسجيل الدخول: '+(e.message||'راجع بيانات الدخول أو تواصل مع الإدارة.');try{await firebase.auth().signOut();}catch(_){}}finally{btn.disabled=false;}}
  document.getElementById('supplierPortalLoginBtn').addEventListener('click',login);document.getElementById('supplierPortalPass').addEventListener('keydown',e=>{if(e.key==='Enter')login();});document.getElementById('supplierPortalLogout').addEventListener('click',async()=>{try{await firebase.auth().signOut();}catch(_){}location.href=location.pathname;});
  document.getElementById('supplierPortalOrders').addEventListener('click',async e=>{const b=e.target.closest('[data-supplier-reply]');if(!b||!signedSupplier)return;const reply=prompt('اكتب ردك على طلب قطع الغيار:');if(reply===null||!reply.trim())return;try{await firebase.firestore().collection('supplier_messages').add({supplierId:signedSupplier.id,supplierName:signedSupplier.name,orderId:b.dataset.supplierReply,message:reply.trim(),createdAt:new Date().toISOString(),sender:'supplier'});document.getElementById('supplierPortalDashMsg').textContent='تم إرسال ردك إلى إدارة المركز.';}catch(err){document.getElementById('supplierPortalDashMsg').textContent='تعذر إرسال الرد: '+(err.message||err);}});
+})();
+</script>
+
+<script id="direct-maintenance-treasury-extension">
+(function(){const dbx=window.db||firebase.firestore();const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+window.addDirectMaintenanceService=async function(){
+  const name=prompt('اكتب اسم خدمة الصيانة المباشرة:');
+  if(name===null)return;
+  if(!name.trim())return alert('اكتب اسم الخدمة أولاً.');
+  const priceText=prompt('اكتب سعر خدمة الصيانة المباشرة:','0');
+  if(priceText===null)return;
+  const price=Number(priceText);
+  if(!Number.isFinite(price)||price<0)return alert('السعر غير صحيح.');
+  const notes=prompt('ملاحظات الخدمة (اختياري):','')||'';
+  try{
+    await dbx.collection('installation_services').add({
+      serviceName:name.trim(),servicePrice:price,notes,
+      directMaintenance:true,serviceType:'direct_maintenance',
+      createdAt:Date.now(),dateStr:new Date().toISOString()
+    });
+    if(typeof loadInstallationServices==='function')await loadInstallationServices();
+    alert('تمت إضافة خدمة الصيانة المباشرة بنجاح، وأصبحت محفوظة ضمن خدمات التركيب والصيانة.');
+  }catch(e){alert('تعذر حفظ خدمة الصيانة المباشرة: '+(e.message||e));}
+};
+window.editInstallationService=async function(id){let d=await dbx.collection('installation_services').doc(id).get();if(!d.exists)return alert('الخدمة غير موجودة');let item=d.data()||{},name=prompt('اسم الخدمة / الصيانة',item.serviceName||item.name||'');if(name===null)return;let price=prompt('السعر',item.servicePrice??item.price??0);if(price===null||!Number.isFinite(Number(price))||Number(price)<0)return alert('السعر غير صحيح');let notes=prompt('ملاحظات',item.notes||'')??item.notes??'';try{await dbx.collection('installation_services').doc(id).set({...item,serviceName:name,servicePrice:Number(price),notes,updatedAt:Date.now()},{merge:true});if(typeof loadInstallationServices==='function')await loadInstallationServices();alert('تم تعديل الخدمة والصيانة');}catch(e){alert('تعذر التعديل: '+e.message)}};
+window.openDirectMaintenanceCatalog=function(){let p=$('directMaintenanceCatalogPanel');if(p)p.style.display=p.style.display==='none'?'block':'none';window.loadDirectMaintenanceCatalog();};window.loadDirectMaintenanceCatalog=async function(){let tb=$('directMaintenanceCatalogRows');if(!tb)return;try{let snap=await dbx.collection('inventory').get();let arr=snap.docs.map(d=>({id:d.id,...d.data()}));tb.innerHTML=arr.map(x=>`<tr><td>${esc(x.name||x.itemName||'')}</td><td>${Number(x.sellPrice??x.salePrice??x.price??0)} ج.م</td><td>${x.directMaintenance===true||/صيانة مباشرة/.test(String(x.category||x.type||''))?'<b style="color:#059669">مضاف للصيانة المباشرة</b>':'<span style="color:#64748b">غير مضاف</span>'} <button class="btn-action-sm btn-blue" onclick="editDirectMaintenanceStockItem('${x.id}')">إضافة / تعديل الصيانة</button></td></tr>`).join('')||'<tr><td colspan="3">لا توجد أصناف بالمخزن</td></tr>';}catch(e){tb.innerHTML='<tr><td colspan="3">تعذر تحميل الأصناف</td></tr>';}};
+window.editDirectMaintenanceStockItem=async function(id){let d=await dbx.collection('inventory').doc(id).get();if(!d.exists)return alert('الصنف غير موجود');let x=d.data()||{},name=prompt('اسم الصنف',x.name||x.itemName||'');if(name===null)return;let price=prompt('سعر الصيانة المباشرة',x.sellPrice??x.salePrice??x.price??0);if(price===null||!Number.isFinite(Number(price))||Number(price)<0)return alert('السعر غير صحيح');await dbx.collection('inventory').doc(id).set({name,directMaintenance:true},{merge:true});await dbx.collection('direct_maintenance_price_overrides').doc(id).set({price:Number(price),updatedAt:Date.now(),source:'treasury'},{merge:true});alert('تم حفظ سعر الصيانة الخاص دون تغيير سعر المخزن الأصلي.');loadDirectMaintenanceCatalog();};
 })();
 </script>
 </body>
