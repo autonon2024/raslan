@@ -1475,10 +1475,12 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
 <button class="btn-action btn-green" data-quick="clients" onclick="openClientAccountsModal()"><i class="fa-solid fa-address-book"></i> كشف حساب العملاء</button>
 <button class="btn-action btn-blue" data-quick="client-balances" onclick="openClientBalancesModal()"><i class="fa-solid fa-wallet"></i> رصيد العملاء</button>
 <button class="btn-action btn-purple" data-quick="advance-payment" onclick="openAdvancePaymentModal()"><i class="fa-solid fa-hand-holding-dollar"></i> دفعة مقدمة</button>
+<button class="btn-action btn-orange" onclick="openPendingAdvancePayments()" type="button"><i class="fa-solid fa-hourglass-half"></i> دفعات مقدمة معلقة <span id="pendingAdvancePaymentsBadge" style="display:inline-block;min-width:22px;padding:2px 6px;border-radius:20px;background:#fff;color:#9a3412;font-weight:900;margin-right:4px">0</span></button>
 <button class="btn-action btn-orange" onclick="openClientLifeStatement()"><i class="fa-solid fa-file-lines"></i> سجل العملاء</button>
 <button class="btn-action btn-green" data-quick="collections" onclick="openCollectionsModal()"><i class="fa-solid fa-hand-holding-dollar"></i> التحصيلات</button>
 <button class="btn-action btn-blue" data-quick="archive" onclick="openArchiveModal()"><i class="fa-solid fa-box-archive"></i> الأرشيف</button>
 <button class="btn-action btn-orange" data-quick="suppliers" onclick="openServiceModal('suppliersServiceModal')"><i class="fa-solid fa-truck-field"></i> الموردون</button>
+<button class="btn-action btn-success" onclick="openDirectMaintenanceAccounts()"><i class="fa-solid fa-screwdriver-wrench"></i> فواتير الصيانة المباشرة</button>
 <button class="btn-action btn-blue" data-quick="invoices" onclick="openServiceModal('invoicesServiceModal')"><i class="fa-solid fa-file-invoice-dollar"></i> الفواتير</button>
 <button class="btn-action btn-purple" id="customizeQuickActionsBtn" onclick="openQuickActionsSettings()"><i class="fa-solid fa-sliders"></i> تخصيص القائمة</button>
 <button class="btn-action btn-purple" id="changeManagerPinBtn" onclick="changeNonManagerPin()" style="display:none"><i class="fa-solid fa-key"></i> كلمة سر المدير</button>
@@ -2403,6 +2405,21 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
 <div style="overflow:auto"><table style="min-width:850px"><thead><tr><th>رقم الإيصال</th><th>التاريخ</th><th>العميل</th><th>الهاتف</th><th>السيارة</th><th>المبلغ المقدم</th><th>المتبقي بعد خصم المسحوبات</th><th>الخزينة</th><th>الإجراءات</th></tr></thead><tbody id="advancePaymentsArchiveBody"><tr><td colspan="9">جاري تحميل الدفعات...</td></tr></tbody></table></div>
 </div>
 </div>
+<!-- دفعات العملاء المقدمة المعلقة: مستقلة عن الشيفت وتظهر لكل موظفي الحسابات -->
+<div id="pendingAdvancePaymentsModal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.75);z-index:45020;align-items:center;justify-content:center;padding:14px;">
+  <div style="width:min(1180px,98vw);max-height:92vh;overflow:auto;background:var(--card-bg);color:var(--text-main);border:2px solid #d97706;border-radius:16px;padding:18px;box-shadow:0 20px 70px #0005">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div><h3 style="color:#b45309;margin:0"><i class="fa-solid fa-hourglass-half"></i> دفعات العملاء المقدمة المعلقة</h3><small style="color:var(--text-muted)">تظل ظاهرة بعد تقفيل الشيفت وتسجيل خروج الموظف، لأنها محفوظة على حساب العميل وليست رصيدًا في خزينة الشيفت.</small></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn-action btn-blue" onclick="loadPendingAdvancePayments()" type="button"><i class="fa-solid fa-rotate"></i> تحديث</button><button class="btn-action btn-danger" onclick="closePendingAdvancePayments()" type="button">إغلاق</button></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px">
+      <div style="padding:12px;border:1px solid #f3c77b;border-radius:10px;background:rgba(245,158,11,.08)"><small>عدد الدفعات المعلقة</small><div id="pendingAdvanceCount" style="font-size:22px;font-weight:900">0</div></div>
+      <div style="padding:12px;border:1px solid #f3c77b;border-radius:10px;background:rgba(245,158,11,.08)"><small>إجمالي المبالغ المتبقية</small><div id="pendingAdvanceTotal" style="font-size:22px;font-weight:900">0 ج</div></div>
+    </div>
+    <input id="pendingAdvanceSearch" oninput="filterPendingAdvancePayments()" type="search" placeholder="ابحث باسم العميل أو الهاتف أو السيارة أو رقم الإيصال" style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:8px;margin-bottom:10px"/>
+    <div style="overflow:auto"><table style="min-width:950px;width:100%"><thead><tr><th>رقم الإيصال</th><th>العميل</th><th>الهاتف</th><th>السيارة / اللوحة</th><th>تاريخ الدفع</th><th>المبلغ الأصلي</th><th>المستخدم / المسترد</th><th>المتبقي</th><th>الموظف المستلم</th><th>الخزينة وقت الاستلام</th></tr></thead><tbody id="pendingAdvancePaymentsBody"><tr><td colspan="10" style="text-align:center">جاري تحميل الدفعات...</td></tr></tbody></table></div>
+  </div>
+</div>
 <!-- نافذة أرصدة العملاء -->
 <div id="clientBalancesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:11000;justify-content:center;align-items:center;padding:12px">
 <div style="background:var(--card-bg);color:var(--text-main);width:min(950px,96vw);max-height:88vh;overflow:auto;border-radius:16px;padding:18px;border:2px solid #2563eb">
@@ -2578,6 +2595,8 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       loadTreasuriesData();
       loadExpensesData();
       loadWorkersData();
+      // عداد الدفعات المعلقة يُحمّل من السجل العام ولا يتأثر بتقفيل الشيفت.
+      setTimeout(() => { if (typeof loadPendingAdvancePayments === 'function') loadPendingAdvancePayments(); }, 800);
     });
 
     db.collection('accounting_queue').onSnapshot(snapshot => {
@@ -3496,6 +3515,30 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
           });
         }
 
+        // عند إصدار الفاتورة يتم اعتبار الدفعات المقدمة الخاصة بالسيارة مستخدمة
+        // لأنها خُصمت بالفعل من إجمالي الفاتورة؛ ولا تظل ظاهرة كدفعة معلقة.
+        if (item.carId && currentAdvancePayment > 0) {
+          try {
+            const advanceSnap = await db.collection('client_advance_payments').where('carId','==',item.carId).get();
+            if (!advanceSnap.empty) {
+              const advanceBatch = db.batch();
+              advanceSnap.docs.forEach(advanceDoc => {
+                const advanceData = advanceDoc.data() || {};
+                const available = Math.max(0,(Number(advanceData.amount)||0)-(Number(advanceData.refundedAmount)||0));
+                if (available > 0) advanceBatch.set(advanceDoc.ref, {
+                  usedAmount: Math.max(Number(advanceData.usedAmount)||0, available),
+                  appliedToInvoiceSerial: invoiceSerial,
+                  usedAt: new Date().toISOString(),
+                  usageStatus: 'applied_to_invoice'
+                }, {merge:true});
+              });
+              await advanceBatch.commit();
+            }
+          } catch (advanceApplyError) {
+            console.warn('تعذر تحديث حالة الدفعات المقدمة بعد إصدار الفاتورة:', advanceApplyError);
+          }
+        }
+
         if (item.carId) {
           await db.collection('cars').doc(item.carId).set({
             status:'PAID_AWAITING_DELIVERY', statusLabel:'تم الدفع - في انتظار تسليم السيارة',
@@ -4010,9 +4053,11 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
             console.warn('تعذر قراءة رصيد خزينة الشيفت:', shiftBalanceError);
           }
         }
-        if (drawerEl) drawerEl.textContent = formatFinancialAmount(unifiedCashTotal);
+        // ربط الأرقام بالخانات الصحيحة: خزينة الشيفت تعرض رصيد المستند shift_cashbox مباشرة للكاشير.
+        // إجمالي الخزينة العام يعرض إجمالي الأرصدة، ولا نعرضه بدل رصيد الشيفت.
+        if (drawerEl) drawerEl.textContent = formatFinancialAmount(cashierShiftBalance === null ? unifiedCashTotal : cashierShiftBalance);
         if (transfersEl) transfersEl.textContent = formatFinancialAmount(transfersTotal);
-        if (treasuryEl) treasuryEl.textContent = formatFinancialAmount(cashierShiftBalance === null ? unifiedCashTotal : cashierShiftBalance);
+        if (treasuryEl) treasuryEl.textContent = formatFinancialAmount(unifiedCashTotal);
         if (deferredEl) deferredEl.textContent = formatFinancialAmount(deferredTotal);
         if (expensesEl) expensesEl.textContent = formatFinancialAmount(expensesTotal);
       } catch (e) {
@@ -4880,6 +4925,47 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
 
 
     let advancePaymentsArchiveCache = [];
+    let pendingAdvancePaymentsCache = [];
+    function openPendingAdvancePayments(){
+      const modal=document.getElementById('pendingAdvancePaymentsModal');
+      if(modal) modal.style.display='flex';
+      const search=document.getElementById('pendingAdvanceSearch'); if(search) search.value='';
+      loadPendingAdvancePayments();
+    }
+    function closePendingAdvancePayments(){const modal=document.getElementById('pendingAdvancePaymentsModal');if(modal)modal.style.display='none';}
+    function pendingAdvanceRemaining(p){return Math.max(0,(Number(p.amount)||0)-(Number(p.usedAmount)||0)-(Number(p.refundedAmount)||0));}
+    async function loadPendingAdvancePayments(){
+      const body=document.getElementById('pendingAdvancePaymentsBody');
+      if(body)body.innerHTML='<tr><td colspan="10" style="text-align:center">جاري تحميل الدفعات المقدمة من قاعدة البيانات...</td></tr>';
+      try{
+        // لا يوجد أي فلتر حسب shiftId أو الموظف: الدفعات تظل متاحة بعد إغلاق أي شيفت.
+        const snap=await db.collection('client_advance_payments').get();
+        pendingAdvancePaymentsCache=[];
+        snap.forEach(d=>{const p={docId:d.id,...(d.data()||{})};if(pendingAdvanceRemaining(p)>0.000001)pendingAdvancePaymentsCache.push(p);});
+        pendingAdvancePaymentsCache.sort((a,b)=>new Date(b.dateStr||0)-new Date(a.dateStr||0));
+        const badge=document.getElementById('pendingAdvancePaymentsBadge');if(badge)badge.textContent=String(pendingAdvancePaymentsCache.length);
+        renderPendingAdvancePayments(pendingAdvancePaymentsCache);
+      }catch(e){
+        console.error('تعذر تحميل الدفعات المقدمة المعلقة:',e);
+        if(body)body.innerHTML=`<tr><td colspan="10" style="color:#b91c1c;text-align:center">تعذر تحميل الدفعات: ${advancePaymentEsc(e.message||e)}</td></tr>`;
+      }
+    }
+    function filterPendingAdvancePayments(){
+      const q=String(document.getElementById('pendingAdvanceSearch')?.value||'').trim().toLowerCase();
+      renderPendingAdvancePayments(pendingAdvancePaymentsCache.filter(p=>[p.id,p.docId,p.clientName,p.clientPhone,p.carInfo,p.carPlate,p.cashier,p.employeeName,p.treasuryName].some(v=>String(v||'').toLowerCase().includes(q))));
+    }
+    function renderPendingAdvancePayments(rows){
+      const body=document.getElementById('pendingAdvancePaymentsBody');if(!body)return;
+      const count=document.getElementById('pendingAdvanceCount');const total=document.getElementById('pendingAdvanceTotal');
+      const sum=rows.reduce((n,p)=>n+pendingAdvanceRemaining(p),0);
+      if(count)count.textContent=String(rows.length);if(total)total.textContent=advancePaymentMoney(sum)+' ج';
+      if(!rows.length){body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:18px">لا توجد دفعات مقدمة معلقة حاليًا.</td></tr>';return;}
+      body.innerHTML=rows.map(p=>{
+        const rem=pendingAdvanceRemaining(p), used=(Number(p.usedAmount)||0)+(Number(p.refundedAmount)||0);
+        const dt=p.dateStr?new Date(p.dateStr).toLocaleString('ar-EG'):'---';
+        return `<tr><td>${advancePaymentEsc(p.id||p.docId)}</td><td><b>${advancePaymentEsc(p.clientName||'---')}</b></td><td>${advancePaymentEsc(p.clientPhone||'---')}</td><td>${advancePaymentEsc(p.carInfo||'')} ${advancePaymentEsc(p.carPlate||'')}</td><td>${advancePaymentEsc(dt)}</td><td>${advancePaymentMoney(p.amount)} ج</td><td>${advancePaymentMoney(used)} ج</td><td style="font-weight:900;color:#b45309">${advancePaymentMoney(rem)} ج</td><td>${advancePaymentEsc(p.employeeName||p.cashier||'---')}</td><td>${advancePaymentEsc(p.treasuryName||'---')}</td></tr>`;
+      }).join('');
+    }
     function openAdvancePaymentsArchive(){
       document.getElementById('advancePaymentsArchiveModal').style.display='flex';
       loadAdvancePaymentsArchive();
@@ -5154,6 +5240,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إيصال استلام نقدية - دفعة مقدمة ${e(payment.id)}</title><style>
       @page{size:${paper} portrait;margin:${paper === 'A6' ? '4mm' : '7mm'}}*{box-sizing:border-box}body{margin:0;background:#fff;color:#10243a;font-family:Tahoma,Arial,sans-serif;direction:rtl}.receipt{width:100%;min-height:${paper === 'A6' ? '140mm' : (paper === 'A5' ? '190mm' : '275mm')};border:2px solid #173b67;border-radius:14px;padding:${paper === 'A6' ? '4mm' : '9mm'};position:relative;overflow:hidden;background:linear-gradient(135deg,#fff 65%,#f3f6fb)}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:4px solid #f28c28;padding-bottom:7mm}.brand{font-size:${paper === 'A6' ? '15px' : '25px'};font-weight:900;color:#173b67}.brand small{display:block;font-size:11px;color:#e87919;margin-top:4px}.center{text-align:center}.center h1{font-size:${paper === 'A6' ? '17px' : '27px'};margin:0;color:#173b67}.center p{margin:5px 0 0;color:#52647b;font-weight:bold}.tag{background:#173b67;color:#fff;border-radius:8px;padding:${paper === 'A6' ? '5px 10px' : '10px 22px'};font-weight:bold;font-size:${paper === 'A6' ? '13px' : '20px'};margin:7mm auto;width:max-content}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:5mm 0}.meta div,.field{border:1px solid #b9c9dc;border-radius:8px;padding:10px;background:#fff}.meta b,.field b{display:block;color:#63758a;font-size:${paper === 'A6' ? '9px' : '12px'};margin-bottom:5px}.meta strong,.field strong{font-size:${paper === 'A6' ? '11px' : '16px'}}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.payment{margin-top:7mm;border:2px solid #f28c28;border-radius:10px;overflow:hidden}.payment h3{margin:0;background:#173b67;color:#fff;padding:10px 14px}.payment .amount{background:#fff4e8;color:#173b67;font-size:${paper === 'A6' ? '18px' : '27px'};font-weight:900;padding:14px;text-align:center}.bottom{display:flex;justify-content:space-between;align-items:end;margin-top:${paper === 'A6' ? '3mm' : '9mm'};border-top:1px solid #ccd6e2;padding-top:7mm}.thanks{font-size:${paper === 'A6' ? '14px' : '22px'};font-weight:900;color:#173b67}.stamp{border:2px solid #64748b;color:transparent;border-radius:50%;width:${paper === 'A6' ? '54px' : '105px'};height:${paper === 'A6' ? '54px' : '105px'};display:block;flex:0 0 auto;background:transparent;transform:none}.foot{position:absolute;bottom:0;left:0;right:0;background:#102b4d;color:#fff;padding:9px 15px;text-align:center;font-size:12px}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}.receipt{min-height:${paper === 'A6' ? '140mm' : (paper === 'A5' ? '190mm' : '275mm')}}}
       </style></head><body><main class="receipt"><header class="top"><div class="brand">AUTO NON <small>CAR SERVICE CENTER • خدمة أفضل لسيارتك</small></div><div class="center"><h1>مركز أوتو نون</h1><p>صيانة - تشخيص - قطع غيار</p></div><div style="font-size:28px;color:#f28c28">⚙</div></header><div style="display:flex;justify-content:space-between;align-items:center;gap:${paper === 'A6' ? '5px' : '12px'};margin-top:${paper === 'A6' ? '2mm' : '5mm'}"><div class="tag" style="margin:0">إيصال استلام نقدية - دفعة مقدمة</div><div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div id="customerQr" title="QR يحتوي على بيانات العميل والإيصال" style="width:${paper === 'A6' ? '88px' : '120px'};height:${paper === 'A6' ? '88px' : '120px'};background:#fff;padding:4px;border:1px solid #64748b;border-radius:6px"></div><small style="font-size:${paper === 'A6' ? '8px' : '11px'};font-weight:bold;color:#173b67">QR بيانات العميل</small></div></div><section class="meta"><div><b>رقم الإيصال</b><strong>${e(payment.id)}</strong></div><div><b>التاريخ</b><strong>${e(dateText)}</strong></div><div><b>الوقت</b><strong>${e(timeText)}</strong></div></section><section class="grid"><div class="field"><b>اسم العميل</b><strong>${e(payment.clientName||'---')}</strong></div><div class="field"><b>رقم التليفون</b><strong>${e(payment.clientPhone||'---')}</strong></div><div class="field"><b>السيارة</b><strong>${e(payment.carInfo||'---')}</strong></div><div class="field"><b>رقم اللوحة</b><strong>${e(payment.carPlate||'---')}</strong></div><div class="field"><b>طريقة الدفع</b><strong>${e(payment.method||'---')}</strong></div><div class="field"><b>الخزينة المستلمة</b><strong>${e(payment.treasuryName||'---')}</strong></div></section><section class="payment"><h3>بيان الدفعة المقدمة</h3><div class="amount">${amount} جنيه مصري</div></section><div class="field" style="margin-top:7mm"><b>المبلغ بالحروف / ملاحظات</b><strong>${e(amountWords)}${payment.notes?' — '+e(payment.notes):''}</strong></div><section class="bottom"><div class="stamp" aria-label="مكان الختم فارغ"></div><div class="thanks">شكراً لثقتكم بنا<br><small style="font-size:13px">نتمنى لكم رحلة آمنة</small></div><div style="text-align:left;font-weight:bold">توقيع المستلم<br><br>........................</div></section><footer class="foot">مركز أوتو نون لصيانة السيارات　 |　 تليفون المركز: 01556004991　 |　 إيصال دفعة مقدمة</footer></main><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener('load',function(){var q=document.getElementById('customerQr');if(window.QRCode&&q){var data={center:'مركز أوتو نون',centerPhone:'01556004991',receipt:${JSON.stringify(payment.id)},client:${JSON.stringify(payment.clientName||'')},clientPhone:${JSON.stringify(payment.clientPhone||'')},car:${JSON.stringify(payment.carInfo||'')},plate:${JSON.stringify(payment.carPlate||'')},amount:${Number(payment.amount)||0},date:${JSON.stringify(payment.dateStr||'')}};new QRCode(q,{text:'https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#',width:${paper === 'A6' ? '80' : '110'},height:${paper === 'A6' ? '80' : '110'},correctLevel:QRCode.CorrectLevel.M});}});<\/script>
+
 
 </body></html>`;
     }
@@ -5571,6 +5658,7 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
     const clone=el.cloneNode(true); clone.classList.add('professional-print'); hideEmptyBlocks(clone);
     const w=window.open('','_blank','width=900,height=700'); if(!w){window.print();return;}
     w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${esc(title||'طباعة')}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,sans-serif;direction:rtl;margin:0;color:#111}.professional-print{background:#fff;padding:0}.professional-print table{width:100%;border-collapse:collapse;font-size:9px}.professional-print th,.professional-print td{border:1px solid #cbd5e1;padding:4px;text-align:right}.professional-print th{background:#f1f5f9;font-weight:900}.professional-print .print-only-empty-hide{display:none!important}.professional-print .no-print{display:none!important}.professional-print .summary-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #cbd5e1}.professional-print .card-box{margin:5px 0;padding:6px;border:1px solid #cbd5e1;border-radius:4px}.professional-print h3,.professional-print h4{margin:0 0 6px}.print-head{border-bottom:2px solid #111;margin-bottom:8px;padding-bottom:5px;font-weight:900;font-size:15px}</style></head><body><div class="print-head">${esc(title||'تقرير')}</div>${clone.outerHTML}
+
 
 </body></html>`);
     w.document.close(); w.focus(); setTimeout(()=>{w.print();setTimeout(()=>w.close(),500)},250);
@@ -6055,6 +6143,7 @@ window.showClientStatement=async function(clientName){
     const total=docs.reduce((a,x)=>a+num(x.totalAmount||x.grandTotal),0),paid=docs.reduce((a,x)=>a+num(x.paidAmount),0),rem=docs.reduce((a,x)=>a+num(x.remainingAmount||(num(x.totalAmount||x.grandTotal)-num(x.paidAmount))),0);
     const w=window.open('','_blank','width=1000,height=750');if(!w)return;
     w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف حساب ${esc(clientName)}</title><style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial,sans-serif;color:#111}.head{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}.meta{display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;margin-bottom:10px}.meta div{border:1px solid #cbd5e1;padding:6px}.bank{width:100%;border-collapse:collapse;font-size:10px}.bank th,.bank td{border:1px solid #cbd5e1;padding:5px}.bank th{background:#0f172a;color:#fff}.tot{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}.tot div{border:1px solid #cbd5e1;padding:7px;font-weight:900}</style></head><body><div class="head"><div><h2 style="margin:0">كشف حساب عميل</h2><div>حركة مالية تفصيلية</div></div><div>${new Date().toLocaleDateString('en-US')}</div></div><div class="meta"><div><b>العميل:</b> ${esc(clientName)}</div><div><b>عدد الزيارات:</b> ${docs.length}</div><div><b>الرصيد:</b> ${money(rem)}</div></div><table class="bank"><thead><tr><th>م</th><th>التاريخ</th><th>رقم الفاتورة</th><th>البيان / السيارة</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody>${rows}</tbody></table><div class="tot"><div>إجمالي المدين<br>${money(total)}</div><div>إجمالي المدفوع<br>${money(paid)}</div><div>الرصيد المستحق<br>${money(rem)}</div></div>
+
 
 </body></html>`);
     w.document.close();setTimeout(()=>{w.print();setTimeout(()=>w.close(),500)},250);
@@ -6997,7 +7086,8 @@ function createClientSupplierHub(){
    .sales-daily-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}.card-box{border:1px solid #cbd5e1;border-radius:6px;padding:7px;text-align:center;background:#f8fafc;break-inside:avoid}.card-box small{display:block;font-size:9px;color:#475569}.card-box div{font-size:13px!important;font-weight:900;color:#123b5d;margin-top:4px}
    table{width:100%;border-collapse:collapse;font-size:8px;table-layout:auto}thead{display:table-header-group}tr{break-inside:avoid}th{background:#173753!important;color:#fff!important;font-weight:bold}th,td{border:1px solid #94a3b8;padding:5px 3px;text-align:center;vertical-align:middle}tbody tr:nth-child(even){background:#f1f5f9}tfoot{font-weight:bold}
    .table-responsive{overflow:visible!important}#salesDailyPrintArea{width:100%}@page{size:A4 landscape;margin:7mm}
-   </style></head><body><header class="print-head"><h1>مركز أوتو نون لصيانة السيارات</h1><p>يومية البيع والتقارير المالية</p></header><div class="print-meta"><span>الفترة: ${from} إلى ${to}</span><span>تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</span></div>${content.outerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+   </style></head><body><header class="print-head"><h1>مركز أوتو نون لصيانة السيارات</h1><p>يومية البيع والتقارير المالية</p></header><div class="print-meta"><span>الفترة: ${from} إلى ${to}</span><span>تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</span></div>${content.outerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+</body></html>`);
    w.document.close();
  };
 
@@ -7144,7 +7234,8 @@ function createClientSupplierHub(){
    if(btn){btn.disabled=true;btn.dataset.oldText=btn.innerHTML;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> جاري الترحيل...';}
    try{
      const shift=readActiveEmployeeShift();
-     const key='manual_'+(shift?.id||employeeShiftName())+'_'+Date.now();
+     if(!shift||shift.status!=='open') throw new Error('لا يمكن ترحيل الرصيد قبل بدء شيفت للموظف الحالي.');
+     const key='manual_'+shift.id+'_'+Date.now();
      const amount=await transferShiftBalanceToGeneral('ترحيل يدوي من صفحة الكاشير',shift,key);
      // أعد تحميل الرصيد من Firestore مباشرة بعد الترحيل حتى لا تظل الواجهة تعرض القيمة القديمة.
      const shiftBalanceSnap=await db.collection('treasuries').doc('shift_cashbox').get();
@@ -7162,18 +7253,25 @@ function createClientSupplierHub(){
    if(local&&local.status==='open'){alert('يوجد شيفت مفتوح بالفعل لهذا الموظف منذ '+new Date(local.startAt).toLocaleString('ar-EG'));return;}
    if(typeof db==='undefined'){alert('قاعدة البيانات غير متاحة.');return;}
    try{
-     const openSnap=await db.collection('employee_shifts').where('employeeName','==',name).get();
-     const openDocs=openSnap.docs.filter(d=>(d.data()||{}).status==='open');
+     // خزينة الشيفت مشتركة، لذلك لا نسمح بفتح شيفتين متزامنتين لموظفين مختلفين.
+     const openSnap=await db.collection('employee_shifts').where('status','==','open').get();
+     const openDocs=openSnap.docs;
      if(openDocs.length){
-       const doc=openDocs.sort((a,b)=>String(b.data().startAt||'').localeCompare(String(a.data().startAt||'')))[0];
-       const restored={id:doc.id,...doc.data()};
-       localStorage.setItem(key,JSON.stringify(restored));const shiftBtn=document.getElementById('startShiftBtn');if(shiftBtn)shiftBtn.style.display='none';
-       alert('تم العثور على شيفت مفتوح محفوظ بالفعل لهذا الموظف.');return;
+       const ownDoc=openDocs.find(d=>String((d.data()||{}).employeeName||'').trim()===name);
+       if(ownDoc){
+         const restored={id:ownDoc.id,...(ownDoc.data()||{})};
+         localStorage.setItem(key,JSON.stringify(restored));const shiftBtn=document.getElementById('startShiftBtn');if(shiftBtn)shiftBtn.style.display='none';
+         alert('يوجد شيفت مفتوح بالفعل باسمك؛ تم استرجاعه ولن يتم إنشاء شيفت مكرر.');return;
+       }
+       const other=(openDocs[0].data()||{}).employeeName||'موظف آخر';
+       throw new Error('لا يمكن بدء شيفت جديد لأن شيفت الموظف «'+other+'» ما زال مفتوحاً. يجب تقفيل اليومية أو تسجيل الخروج للموظف السابق أولاً.');
      }
      const ref=db.collection('employee_shifts').doc();
-     // أي رصيد متبقٍ من الشيفت السابق يُرحّل أولاً قبل بدء شيفت جديد.
-     await transferShiftBalanceToGeneral('ترحيل الرصيد السابق عند بدء شيفت جديد',null,'start_'+ref.id);
-     const startedAt=new Date();const shift={id:ref.id,employeeId:employeeShiftUserId||'',employeeName:name,status:'open',startAt:startedAt.toISOString(),startTimestamp:startedAt.getTime(),plannedHours:employeeShiftHours||6,plannedEndAt:new Date(startedAt.getTime()+(employeeShiftHours||6)*3600000).toISOString(),createdAt:startedAt.toISOString()};
+     // قبل بداية الموظف الجديد: ترحيل أي متبقي للخزينة العامة والتأكد أن خزينة الشيفت صفر.
+     await transferShiftBalanceToGeneral('تصفير خزينة الشيفت قبل بدء شيفت جديد',null,'start_'+ref.id);
+     const cleanBox=await db.collection('treasuries').doc('shift_cashbox').get();
+     if(Math.abs(Number((cleanBox.data()||{}).balance)||0)>0.000001) throw new Error('خزينة الشيفت لم تصل إلى صفر؛ لم يتم بدء الشيفت الجديد.');
+     const startedAt=new Date();const shift={id:ref.id,employeeId:employeeShiftUserId||'',employeeName:name,status:'open',startAt:startedAt.toISOString(),startTimestamp:startedAt.getTime(),plannedHours:employeeShiftHours||6,plannedEndAt:new Date(startedAt.getTime()+(employeeShiftHours||6)*3600000).toISOString(),createdAt:startedAt.toISOString(),openingShiftCash:0};
      await ref.set(shift);
      localStorage.setItem(key,JSON.stringify(shift));
      const btn=document.getElementById('startShiftBtn');if(btn)btn.style.display='none';
@@ -7387,7 +7485,8 @@ body{margin:0;background:#edf1f6;color:var(--ink);font:13px Tahoma,Arial,sans-se
 <div class="notes"><b>ملاحظات:</b> ${esc(r.notes||'لا توجد ملاحظات')}</div>
 <section class="signatures"><span>توقيع المحاسب<br>........................</span><span>توقيع العميل<br>........................</span><span>ختم المركز<br>........................</span></section>
 <footer class="footer">شكراً لثقتكم بمركز أوتو نون لصيانة السيارات</footer>
-</main><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener('load',function(){var el=document.getElementById('collectionReceiptQr');var data={center:'مركز أوتو نون',type:'إيصال تحصيل',receipt:${JSON.stringify(r.invoiceSerial)},client:${JSON.stringify(r.clientName||'')},phone:${JSON.stringify(r.clientPhone||'')},car:${JSON.stringify(r.carInfo||'')},amount:${Number(r.paidAmount)||0},remaining:${Number(r.remainingAmount)||0},date:${JSON.stringify(receiptDate)}};if(el&&window.QRCode)new QRCode(el,{text:'https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#',width:96,height:96,correctLevel:QRCode.CorrectLevel.M});});<\/script></body></html>`);
+</main><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener('load',function(){var el=document.getElementById('collectionReceiptQr');var data={center:'مركز أوتو نون',type:'إيصال تحصيل',receipt:${JSON.stringify(r.invoiceSerial)},client:${JSON.stringify(r.clientName||'')},phone:${JSON.stringify(r.clientPhone||'')},car:${JSON.stringify(r.carInfo||'')},amount:${Number(r.paidAmount)||0},remaining:${Number(r.remainingAmount)||0},date:${JSON.stringify(receiptDate)}};if(el&&window.QRCode)new QRCode(el,{text:'https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#',width:96,height:96,correctLevel:QRCode.CorrectLevel.M});});<\/script>
+</body></html>`);
    w.document.close();
   };
   window.printCollectionReceipt=window.previewCollectionReceipt;
@@ -7621,7 +7720,8 @@ async function searchClientLifeStatement(){
 function printClientLifeStatement(){const content=document.getElementById('clientLifeStatementContent');if(!content||!content.innerText.trim()){alert('اعرض بيانات العميل أولاً قبل الطباعة');return}const w=window.open('','_blank','width=1100,height=800');if(!w){alert('اسمح بفتح النوافذ المنبثقة حتى تتمكن من الطباعة');return}w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف العميل</title><style>body{font-family:Tahoma,Arial;padding:20px;color:#111}h2{text-align:center}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #777;padding:6px;text-align:right;vertical-align:top;word-break:break-word}th{background:#eee}.card-box{border:1px solid #aaa;padding:10px;margin-bottom:12px}.table-responsive{overflow:visible}small{font-size:10px}@page{size:A4 landscape;margin:10mm}</style></head><body><h2>مركز أوتو نون — كشف العميل</h2><div id="clientStatementQr" style="width:105px;height:105px;margin:8px auto"></div>${content.innerHTML}
 \n
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener("load",function(){var el=document.getElementById("clientStatementQr");if(el&&window.QRCode)new QRCode(el,{text:'https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#',width:100,height:100,correctLevel:QRCode.CorrectLevel.M});});<\/script></body></html>`);w.document.close();w.focus();}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener("load",function(){var el=document.getElementById("clientStatementQr");if(el&&window.QRCode)new QRCode(el,{text:'https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#',width:100,height:100,correctLevel:QRCode.CorrectLevel.M});});<\/script>
+</body></html>`);w.document.close();w.focus();}
 </script>
 <div class="non-service-overlay no-print" id="salesDailyModal" onclick="if(event.target===this)closeSalesDaily()" style="z-index:8500">
 <div class="non-service-window" style="max-width:1500px">
@@ -7897,6 +7997,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
    const w=window.open('','_blank','width=1100,height=850');if(!w){alert('اسمح بفتح النوافذ المنبثقة للطباعة.');return;}
    const css='<style>@page{size:A4 portrait;margin:10mm}*{box-sizing:border-box}body{font-family:Tahoma,Arial;color:#17243a;margin:0;font-size:11px;line-height:1.55}.head{border-bottom:3px solid #173753;padding:0 0 10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:end}.head h1{font-size:21px;margin:0;color:#173753}.head p{margin:3px 0;color:#64748b}.report-section{border:1px solid #cbd5e1;border-radius:8px;padding:10px;margin:0 0 11px;break-inside:avoid;page-break-inside:avoid;background:#fff!important}.report-section h3{font-size:13px;color:#173753;border-bottom:1px solid #dbe4ee;padding-bottom:6px;margin:0 0 9px}.card-box{box-shadow:none!important;border:1px solid #d5dee8!important;border-radius:6px!important;padding:8px!important;background:#f8fafc!important;color:#17243a!important}table{width:100%;border-collapse:collapse!important;font-size:10px}th{background:#e8eef5!important;color:#173753!important;font-weight:900}th,td{border:1px solid #cbd5e1!important;padding:6px!important;text-align:right}b,strong{color:#173753}.foot{border-top:2px solid #173753;padding-top:7px;margin-top:15px;text-align:center;color:#64748b;font-size:9px}</style>';
     w.document.open();w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>ملخص الحسابات والأرباح</title>${css}</head><body><header class="head"><div><h1>مركز أوتو نون (NON)</h1><p>ملخص الحسابات والأرباح</p></div><b>تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</b></header>${clone.innerHTML}<footer class="foot">مركز أوتو نون لصيانة السيارات — تقرير داخلي للحسابات والأرباح</footer><script>window.onload=()=>setTimeout(()=>window.print(),250)<\\/script>
+
 
 </body></html>`);w.document.close();
   };
@@ -8429,6 +8530,150 @@ function printClientLifeStatement(){const content=document.getElementById('clien
  body.print-a4 #printableInvoiceArea .no-print,body.print-a4 #originalDepartmentBox,body.print-a4 #advancePaymentAlertBox{display:none!important}
 }
 </style>
+
+<div id="directMaintenanceAccountsModal" class="modal" style="display:none;position:fixed;inset:0;background:#0009;z-index:99999;align-items:center;justify-content:center;padding:15px"><div style="background:#fff;color:#172033;border-radius:12px;padding:18px;width:min(1000px,96vw);max-height:90vh;overflow:auto"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h3>فواتير الصيانة المباشرة</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-action btn-blue" onclick="openDirectMaintenanceArchive()">أرشيف فواتير الصيانة المباشرة</button><button class="btn-action btn-danger" onclick="closeDirectMaintenanceAccounts()">إغلاق</button></div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0"><label>الخزينة المحصل عليها:</label><select id="dmAccountsTreasury" style="min-width:220px;padding:9px;border:1px solid #cbd5e1;border-radius:8px"><option value="">جار تحميل الخزن...</option></select><label>مقاس الفاتورة:</label><select id="dmAccountsPrintSize" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px"><option value="A4">A4</option><option value="A5">A5</option><option value="A6">A6</option></select></div><div style="overflow:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>رقم الفاتورة</th><th>اسم العميل</th><th>رقم الهاتف</th><th>التاريخ</th><th>الخدمات والأصناف</th><th>الإجمالي</th><th>المدفوع / المتبقي</th><th>الحالة والإجراء</th></tr></thead><tbody id="directMaintenanceAccountsRows"></tbody></table></div></div></div>
+<div id="directMaintenanceArchiveModal" class="modal" style="display:none;position:fixed;inset:0;background:#0009;z-index:100000;align-items:center;justify-content:center;padding:15px"><div style="background:#fff;color:#172033;border-radius:12px;padding:18px;width:min(1100px,96vw);max-height:90vh;overflow:auto"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h3>أرشيف فواتير الصيانة المباشرة</h3><button class="btn-action btn-danger" onclick="closeDirectMaintenanceArchive()">إغلاق</button></div><div style="overflow:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>رقم الفاتورة</th><th>اسم العميل</th><th>رقم الهاتف</th><th>التاريخ</th><th>الخدمات والأصناف</th><th>الإجمالي</th><th>المدفوع</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="directMaintenanceArchiveRows"></tbody></table></div></div></div>
+<script id="direct-maintenance-accounts-extension">
+(function(){
+const dbx=window.db||firebase.firestore();
+const $=id=>document.getElementById(id);
+const fmt=n=>(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let docs=[];
+async function loadDirectMaintenanceTreasuries(){
+ const sel=$('dmAccountsTreasury'); if(!sel)return;
+ try{
+  const snap=await dbx.collection('treasuries').get();
+  const list=snap.docs.map(d=>({id:d.id,...(d.data()||{})}));
+  const preferred=list.find(t=>t.id==='shift_cashbox')||list.find(t=>t.isDefault||t.isMain||t.defaultTreasury)||list[0];
+  sel.innerHTML='<option value="">اختر الخزينة التي سيتم الإيداع بها</option>'+list.map(t=>`<option value="${esc(t.id)}">${esc(t.name||t.id)} — رصيد ${fmt(t.balance)}</option>`).join('');
+  if(preferred)sel.value=preferred.id;
+ }catch(e){sel.innerHTML='<option value="">تعذر تحميل الخزن</option>';console.error(e);}
+}
+async function assignSequentialInvoiceNumbers(rows){
+ const chronological=rows.slice().sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0));
+ for(const row of chronological){
+  if(row.invoiceNo && /^\d+$/.test(String(row.invoiceNo)))continue;
+  const ref=dbx.collection('direct_maintenance_invoices').doc(row.id);
+  try{
+   await dbx.runTransaction(async tx=>{
+    const [invSnap,counterSnap]=await Promise.all([tx.get(ref),tx.get(dbx.collection('system_counters').doc('directMaintenanceInvoice'))]);
+    if(!invSnap.exists)return;
+    const current=String(invSnap.data().invoiceNo||'');
+    if(/^\d+$/.test(current))return;
+    const last=Number(counterSnap.exists?counterSnap.data().lastNumber:98)||98;
+    const next=Math.max(98,last)+1;
+    tx.set(dbx.collection('system_counters').doc('directMaintenanceInvoice'),{lastNumber:next,updatedAt:Date.now()},{merge:true});
+    tx.update(ref,{invoiceNo:String(next),invoiceSerial:String(next),updatedAt:Date.now()});
+    row.invoiceNo=String(next);row.invoiceSerial=String(next);
+   });
+  }catch(e){console.error('assign invoice number',e);}
+ }
+}
+window.openDirectMaintenanceAccounts=async function(){
+ $('directMaintenanceAccountsModal').style.display='flex';
+ await loadDirectMaintenanceTreasuries();
+ await refreshDirectMaintenanceInvoices();
+};
+window.closeDirectMaintenanceAccounts=()=>$('directMaintenanceAccountsModal').style.display='none';
+window.openDirectMaintenanceArchive=async function(){
+ const modal=$('directMaintenanceArchiveModal');if(modal)modal.style.display='flex';
+ await refreshDirectMaintenanceArchive();
+};
+window.closeDirectMaintenanceArchive=()=>$('directMaintenanceArchiveModal').style.display='none';
+window.refreshDirectMaintenanceArchive=async function(){
+ const tb=$('directMaintenanceArchiveRows');if(!tb)return;tb.innerHTML='<tr><td colspan="9">جار تحميل الأرشيف...</td></tr>';
+ try{
+  const snap=await dbx.collection('direct_maintenance_invoices_archive').orderBy('archivedAt','desc').get();
+  const rows=snap.docs.map(d=>({id:d.id,...(d.data()||{})}));
+  tb.innerHTML=rows.map(x=>`<tr><td>${esc(x.invoiceNo||x.invoiceSerial||x.id)}</td><td>${esc(x.customerName||x.clientName||'—')}</td><td>${esc(x.customerPhone||x.clientPhone||x.phone||'—')}</td><td>${esc(x.date||x.dateFormatted||'')}</td><td>${(x.items||[]).map(i=>esc(i.name)+' × '+Number(i.qty||0)).join('<br>')}</td><td>${fmt(x.total||x.totalAmount)} ج.م</td><td>${fmt(x.paid??x.paidAmount??x.total??x.totalAmount)} ج.م</td><td>محصلة بالكامل</td><td><button class="btn-action btn-blue" onclick="printDirectMaintenanceArchivedInvoice('${x.id}')">طباعة</button></td></tr>`).join('')||'<tr><td colspan="9">الأرشيف فارغ حالياً</td></tr>';
+ }catch(e){tb.innerHTML='<tr><td colspan="9">تعذر تحميل الأرشيف: '+esc(e.message)+'</td></tr>'; }
+};
+window.printDirectMaintenanceArchivedInvoice=async function(id){
+ try{const snap=await dbx.collection('direct_maintenance_invoices_archive').doc(id).get();if(!snap.exists)return alert('الفاتورة غير موجودة في الأرشيف');const d=snap.data()||{};const temp=docs;docs=[{id,...d,invoiceNo:d.invoiceNo||d.invoiceSerial,total:d.total??d.totalAmount,paid:d.paid??d.paidAmount,remaining:0}];printDirectMaintenanceInvoice(id);docs=temp;}catch(e){alert('تعذر فتح الفاتورة: '+e.message);}
+};
+window.refreshDirectMaintenanceInvoices=async function(){
+ const tb=$('directMaintenanceAccountsRows');
+ tb.innerHTML='<tr><td colspan="8">جار تحميل الفواتير...</td></tr>';
+ try{
+  const snap=await dbx.collection('direct_maintenance_invoices').orderBy('createdAt','desc').get();
+  docs=snap.docs.map(d=>({id:d.id,...d.data()}));
+  await assignSequentialInvoiceNumbers(docs);
+  tb.innerHTML=docs.map(x=>`<tr><td>${esc(x.invoiceNo||x.id)}</td><td>${esc(x.customerName||x.clientName||'—')}</td><td>${esc(x.customerPhone||x.clientPhone||x.phone||'—')}</td><td>${esc(x.date||'')}</td><td>${(x.items||[]).map(i=>esc(i.name)+' × '+Number(i.qty||0)).join('<br>')}</td><td>${fmt(x.total)} ج.م</td><td>${fmt(x.paid)} / ${fmt(x.remaining??(Number(x.total||0)-Number(x.paid||0)))} ج.م</td><td>${esc(x.status||'غير محصلة')}<br><button class="btn-action btn-green" onclick="collectDirectMaintenanceInvoice('${x.id}')">تحصيل</button> <button class="btn-action btn-blue" onclick="printDirectMaintenanceInvoice('${x.id}')">طباعة</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد فواتير صيانة مباشرة</td></tr>';
+ }catch(e){tb.innerHTML='<tr><td colspan="8">تعذر تحميل الفواتير: '+esc(e.message)+'</td></tr>';}
+};
+window.collectDirectMaintenanceInvoice=async function(id){
+ const x=docs.find(a=>a.id===id);if(!x)return;
+ const due=Number(x.remaining??(Number(x.total||0)-Number(x.paid||0)));
+ if(due<=0)return alert('الفاتورة محصلة بالكامل');
+ const treasuryId=String($('dmAccountsTreasury')?.value||'').trim();
+ if(!treasuryId)return alert('اختر الخزينة التي سيتم إضافة مبلغ التحصيل إليها أولاً');
+ const v=prompt('المبلغ المراد تحصيله — المتبقي '+fmt(due),due);if(v===null)return;
+ const amount=Number(v);if(!Number.isFinite(amount)||amount<=0||amount>due)return alert('قيمة التحصيل غير صحيحة');
+ const invoiceRef=dbx.collection('direct_maintenance_invoices').doc(id);
+ const treasuryRef=dbx.collection('treasuries').doc(treasuryId);
+ const paymentKey='DM_PAY_'+id+'_'+Date.now();
+ const movementRef=dbx.collection('treasury_transactions').doc(paymentKey);
+ const archiveRef=dbx.collection('invoices_archive').doc('DM-'+id);
+ let newPaid=0,newRemaining=0,invoiceData=null,treasuryName='';
+ try{
+  await dbx.runTransaction(async tx=>{
+   const [invSnap,trSnap]=await Promise.all([tx.get(invoiceRef),tx.get(treasuryRef)]);
+   if(!invSnap.exists)throw new Error('الفاتورة غير موجودة');
+   if(!trSnap.exists)throw new Error('الخزينة المحددة غير موجودة');
+   const current=invSnap.data()||{};
+   const currentPaid=Number(current.paid||0);
+   const currentDue=Math.max(0,Number(current.total||0)-currentPaid);
+   if(amount>currentDue+0.001)throw new Error('تم تحصيل جزء من الفاتورة بالفعل؛ حدّث القائمة وحاول مرة أخرى');
+   newPaid=currentPaid+amount;newRemaining=Math.max(0,Number(current.total||0)-newPaid);
+   treasuryName=trSnap.data().name||treasuryId;
+   invoiceData={...current,paid:newPaid,remaining:newRemaining,status:newRemaining===0?'محصلة':'محصلة جزئياً',paidAt:Date.now(),updatedAt:Date.now(),treasuryId,treasuryName};
+   if(newRemaining<=0.001){
+    const directArchiveRef=dbx.collection('direct_maintenance_invoices_archive').doc(id);
+    const archivedInvoice={...current,id,paid:newPaid,remaining:0,status:'محصلة بالكامل',paidAt:Date.now(),archivedAt:Date.now(),updatedAt:Date.now(),treasuryId,treasuryName};
+    tx.set(directArchiveRef,archivedInvoice,{merge:true});
+    tx.delete(invoiceRef);
+   }else{
+    tx.update(invoiceRef,{paid:newPaid,remaining:newRemaining,status:invoiceData.status,paidAt:Date.now(),updatedAt:Date.now(),treasuryId,treasuryName});
+   }
+   tx.update(treasuryRef,{balance:(Number(trSnap.data().balance)||0)+amount,updatedAt:new Date().toISOString()});
+   tx.set(movementRef,{type:'تحصيل فاتورة صيانة مباشرة',direction:'in',amount,paidAmount:amount,paymentAmount:amount,totalAmount:Number(current.total||0),invoiceSerial:current.invoiceNo||current.invoiceSerial||id,invoiceType:'صيانة مباشرة',source:'direct_maintenance',directMaintenanceInvoiceId:id,treasuryId,treasuryName,customerName:current.customerName||current.clientName||'',customerPhone:current.customerPhone||current.clientPhone||current.phone||'',createdAt:new Date().toISOString(),dateStr:new Date().toISOString(),dateFormatted:new Date().toLocaleDateString('ar-EG')});
+   const archiveData={invoiceSerial:current.invoiceNo||current.invoiceSerial||id,invoiceType:'صيانة مباشرة',source:'direct_maintenance',directMaintenanceInvoiceId:id,customerName:current.customerName||current.clientName||'',clientName:current.customerName||current.clientName||'',clientPhone:current.customerPhone||current.clientPhone||current.phone||'',items:current.items||[],totalAmount:Number(current.total||0),paidAmount:newPaid,paymentAmount:newPaid,remainingAmount:newRemaining,servicesTotal:newPaid,quickServicesTotal:0,partsLaborTotal:0,method:'نقدي',paymentMethod:'نقدي',treasuryId,treasuryName,dateStr:new Date().toISOString(),dateFormatted:new Date().toLocaleDateString('ar-EG'),createdAt:current.createdAt||Date.now(),updatedAt:Date.now()};
+   tx.set(archiveRef,archiveData,{merge:true});
+  });
+  await refreshDirectMaintenanceInvoices();
+  if(newRemaining<=0.001){await refreshDirectMaintenanceArchive();alert('تم تحصيل الفاتورة بالكامل ونقلها إلى أرشيف فواتير الصيانة المباشرة وإزالتها من الفواتير النشطة.');}
+  else alert('تم تسجيل التحصيل الجزئي. ستظل الفاتورة في الفواتير النشطة حتى سداد المتبقي بالكامل.');
+ }catch(e){alert('تعذر تسجيل التحصيل: '+e.message);}
+};
+window.printDirectMaintenanceInvoice=function(id){
+ const x=docs.find(a=>a.id===id);if(!x)return;
+ const size=$('dmAccountsPrintSize')?.value||'A4';
+ const w=window.open('','_blank','width=900,height=900');if(!w)return alert('اسمح بفتح النوافذ المنبثقة للطباعة');
+ const rows=(x.items||[]).map((i,n)=>`<tr><td>${n+1}</td><td>${esc(i.name)}</td><td>${esc(i.kind||'صيانة مباشرة')}</td><td>${Number(i.qty||0)}</td><td>${fmt(i.price)}</td><td>${fmt(i.total??(Number(i.qty||0)*Number(i.price||0)))}</td></tr>`).join('');
+ w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة صيانة مباشرة رقم ${esc(x.invoiceNo||x.id)}</title><style>
+ @page{size:${size};margin:${size==='A6'?'6mm':size==='A5'?'9mm':'14mm'}}
+ *{box-sizing:border-box}body{font-family:Tahoma,Arial,sans-serif;color:#172033;margin:0;background:#fff;font-size:${size==='A6'?'9px':size==='A5'?'11px':'13px'}}
+ .invoice{border:2px solid #243b57;border-radius:12px;padding:${size==='A6'?'8px':size==='A5'?'12px':'18px'}}
+ .top{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #d59b35;padding-bottom:10px;margin-bottom:12px}
+ h1{font-size:${size==='A6'?'15px':size==='A5'?'19px':'24px'};margin:0;color:#173653}.sub{color:#64748b;margin-top:5px}
+ .tag{background:#edf3f8;border:1px solid #cbd5e1;border-radius:8px;padding:7px 10px;font-weight:bold}
+ .customer{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f7f9fc;border:1px solid #dbe3ed;border-radius:9px;padding:10px;margin:12px 0}
+ .field b{display:block;color:#64748b;font-size:.85em;margin-bottom:4px}
+ table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#203b58;color:#fff}th,td{border:1px solid #cbd5e1;padding:${size==='A6'?'5px':size==='A5'?'7px':'9px'};text-align:right}
+ .totals{margin:14px 0 0 auto;width:${size==='A6'?'100%':'65%'};border:1px solid #cbd5e1;border-radius:9px;padding:10px;background:#f8fafc}
+ .line{display:flex;justify-content:space-between;padding:4px 0}.grand{font-size:1.2em;font-weight:bold;color:#0f5132;border-top:2px solid #cbd5e1;margin-top:5px;padding-top:8px}
+ .footer{margin-top:18px;border-top:1px dashed #94a3b8;padding-top:10px;text-align:center;color:#64748b}
+ @media print{body{padding:0}.invoice{break-inside:avoid}}
+ </style></head><body><main class="invoice"><div class="top"><div><h1>مركز أوتو نون لصيانة السيارات</h1><div class="sub">فاتورة خدمات الصيانة المباشرة</div></div><div class="tag">فاتورة رقم: ${esc(x.invoiceNo||x.invoiceSerial||x.id)}</div></div>
+ <div class="customer"><div class="field"><b>اسم العميل</b>${esc(x.customerName||x.clientName||'—')}</div><div class="field"><b>رقم الهاتف</b>${esc(x.customerPhone||x.clientPhone||x.phone||'—')}</div><div class="field"><b>التاريخ</b>${esc(x.date||new Date(x.createdAt||Date.now()).toLocaleDateString('ar-EG'))}</div><div class="field"><b>نوع الفاتورة</b>صيانة مباشرة</div></div>
+ <table><thead><tr><th>م</th><th>الخدمة / الصنف</th><th>النوع</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
+ <div class="totals"><div class="line"><span>إجمالي الفاتورة</span><b>${fmt(x.total)} ج.م</b></div><div class="line"><span>المدفوع</span><b>${fmt(x.paid)} ج.م</b></div><div class="line"><span>المتبقي</span><b>${fmt(x.remaining??(Number(x.total||0)-Number(x.paid||0)))} ج.م</b></div><div class="line grand"><span>حالة السداد</span><span>${esc(x.status||'غير محصلة')}</span></div></div>
+ <div class="footer">شكراً لثقتكم في مركز أوتو نون — نتمنى لكم قيادة آمنة</div></main><script>window.onload=()=>window.print()<\/script></body></html>`);
+ w.document.close();
+};
+})();
+</script>
 </body>
 </html>
 <style id="hesabat-archive-dedup-delete-and-profit-summary">
@@ -8737,6 +8982,7 @@ body.archive-invoice-print #printableInvoiceArea{
     #printableInvoiceArea .no-print{display:none!important}#printableInvoiceArea input{border:0;background:transparent}
     @media print{body{padding:0;background:#fff}.preview-toolbar{display:none!important}#printableInvoiceArea{width:100%!important;zoom:1!important;box-shadow:none!important}}
    </style></head><body><div class="preview-toolbar"><b>معاينة ${size}</b><button onclick="window.print()">طباعة ${size}</button><button onclick="window.close()">إغلاق</button></div>${clone.outerHTML}
+
 
 </body></html>`);
    w.document.close();
@@ -9209,6 +9455,7 @@ window.previewInvoiceSize=async function(){
 .note{margin:6mm 0;padding:9px 12px;border-right:4px solid #f28c28;background:#fff8f0;font-size:11px}.bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #ddd;padding-top:4mm;margin-top:5mm;font-size:10px}.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;color:#76256d}.qr{width:104px;height:104px;display:grid;place-items:center;background:#fff;border:1px solid #ddd;padding:5px}.qr img,.qr canvas{max-width:100%;max-height:100%}.contacts{text-align:center;line-height:1.9;flex:1}.sign{text-align:center;line-height:2;min-width:115px}.strip{position:absolute;bottom:0;left:0;right:0;height:7mm;background:linear-gradient(90deg,#76256d 0 48%,#f28c28 48%)}@media print{body{background:white}.toolbar{display:none!important}.sheet{margin:0;width:auto;min-height:275mm;box-shadow:none;padding:10mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body><div class="toolbar"><button class="go" onclick="window.print()">طباعة الفاتورة</button><button class="close" onclick="window.close()">إغلاق المعاينة</button></div><main class="sheet"><header class="brand"><div><h2>مركز أوتو نون لصيانة السيارات</h2><small>خدمات الصيانة وقطع الغيار</small><address>الإسكندرية - المعمورة البلد - طريق أبو قير - بجوار مسجد السادات<br>تليفون: 01556004991　 |　 01004042250　 |　 أرضي: 035685586</address></div><div class="logo">ن</div></header>
 <div class="heading"><h1>فاتورة صيانة وقطع غيار</h1><div class="serial">رقم الفاتورة: ${esc(d.invoice||'—')}</div></div><div class="meta"><div><b>اسم العميل</b>${esc(d.customer||'—')}</div><div><b>رقم الهاتف</b>${esc(d.phone||'—')}</div><div><b>التاريخ</b>${esc(d.date||'—')}</div><div><b>السيارة</b>${esc(d.car||'—')}</div><div><b>رقم اللوحة</b>${esc(d.plate||'—')}</div><div><b>إذن استلام السيارة</b>${esc(d.receipt||'يصدر عند التحصيل')}</div></div><section id="copy">${clone.outerHTML}</section><footer class="bottom"><div class="qr-wrap"><b>بيانات الفاتورة QR</b><div class="qr" id="qr">${qrImage?`<img src="${qrImage}" alt="QR بيانات الفاتورة" style="width:100%;height:100%;object-fit:contain">`:'<span style="font-size:10px;color:#b91c1c">تعذر إنشاء QR</span>'}</div></div><div class="contacts"><b> </b><br>  </div><div class="sign"></div></footer><div class="strip"></div></main>
+
 </body></html>`);w.document.close();
 };})();
 </script>
@@ -9290,6 +9537,7 @@ window.previewInvoiceSize=async function(){
    <div class="title">فاتورة صيانة وقطع غيار</div><div class="meta"><div><b>العميل:</b>${esc(data.customer)}</div><div><b>الهاتف:</b>${esc(data.phone)}</div><div><b>السيارة:</b>${esc(data.car)}</div><div><b>اللوحة:</b>${esc(data.plate)}</div><div><b>التاريخ:</b>${esc(data.date)}</div><div><b>مسؤول الحسابات:</b>${esc(data.cashier)}</div></div>
    <section id="copy">${clone.outerHTML}</section></main>
    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>window.addEventListener('load',function(){var q=document.getElementById('invoicePreviewQr');function draw(){if(q&&window.QRCode){q.innerHTML='';new QRCode(q,{text:${JSON.stringify('https://www.facebook.com/cars.center45?rdid=PaUP6l0HO0ap4p96&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1KHheyDG4f%2F#')},width:100,height:100,correctLevel:QRCode.CorrectLevel?QRCode.CorrectLevel.M:0});}else if(q){q.textContent='QR غير متاح';}}if(window.QRCode)draw();else{var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';sc.onload=draw;sc.onerror=draw;document.head.appendChild(sc);}});<\/script>
+
 
 
 </body></html>`);
@@ -9913,7 +10161,9 @@ body.non-role-cashier .stat-mini-card:has(#statTreasuryTotal){display:none!impor
     if(!selectedShift)return;
     const content=detailsHtml(selectedShift);
     const w=window.open('','_blank','width=1200,height=900');if(!w){alert('اسمح بالنوافذ المنبثقة للطباعة.');return;}
-    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير الشيفت</title><style>body{font-family:Tahoma,Arial;padding:18px;color:#111}h2{text-align:center;color:#173753}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form-field{padding:7px;border:1px solid #ddd}.form-field label{display:block;font-weight:bold}input{width:95%;border:0;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:10px;margin:7px 0}th,td{border:1px solid #777;padding:6px;text-align:right}th{background:#e8eef5}.financial-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.stat-mini-card{border:1px solid #aaa;padding:8px;margin:4px}.stat-mini-card span,.stat-mini-card strong{display:block}@page{size:A4 landscape;margin:8mm}</style></head><body><h2>مركز أوتو نون لصيانة السيارات — تقرير الشيفت</h2>${content}<script>window.onload=()=>window.print()<\\/script></body></html>`);
+    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير الشيفت</title><style>body{font-family:Tahoma,Arial;padding:18px;color:#111}h2{text-align:center;color:#173753}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form-field{padding:7px;border:1px solid #ddd}.form-field label{display:block;font-weight:bold}input{width:95%;border:0;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:10px;margin:7px 0}th,td{border:1px solid #777;padding:6px;text-align:right}th{background:#e8eef5}.financial-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.stat-mini-card{border:1px solid #aaa;padding:8px;margin:4px}.stat-mini-card span,.stat-mini-card strong{display:block}@page{size:A4 landscape;margin:8mm}</style></head><body><h2>مركز أوتو نون لصيانة السيارات — تقرير الشيفت</h2>${content}<script>window.onload=()=>window.print()<\\/script>
+
+</body></html>`);
     w.document.close();
   };
 
