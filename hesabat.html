@@ -3999,9 +3999,20 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
         treasuryBalanceTotal += adjustments.treasury;
         deferredTotal += adjustments.deferred;
         const unifiedCashTotal = treasuryBalanceTotal + adjustments.drawer;
+        // في واجهة الكاشير يجب عرض رصيد خزينة الشيفت وحدها، وليس مجموع كل الخزن؛
+        // لأن الترحيل ينقل المبلغ للخزينة العامة ولا يُنقص إجمالي أموال المركز.
+        let cashierShiftBalance = null;
+        if (String(window.nonCurrentRole || '').toLowerCase() === 'cashier') {
+          try {
+            const shiftCashSnap = await db.collection('treasuries').doc('shift_cashbox').get();
+            cashierShiftBalance = Number((shiftCashSnap.data() || {}).balance) || 0;
+          } catch (shiftBalanceError) {
+            console.warn('تعذر قراءة رصيد خزينة الشيفت:', shiftBalanceError);
+          }
+        }
         if (drawerEl) drawerEl.textContent = formatFinancialAmount(unifiedCashTotal);
         if (transfersEl) transfersEl.textContent = formatFinancialAmount(transfersTotal);
-        if (treasuryEl) treasuryEl.textContent = formatFinancialAmount(unifiedCashTotal);
+        if (treasuryEl) treasuryEl.textContent = formatFinancialAmount(cashierShiftBalance === null ? unifiedCashTotal : cashierShiftBalance);
         if (deferredEl) deferredEl.textContent = formatFinancialAmount(deferredTotal);
         if (expensesEl) expensesEl.textContent = formatFinancialAmount(expensesTotal);
       } catch (e) {
@@ -6402,7 +6413,6 @@ window.addEventListener('load', function () {
 (function(){
  const $=id=>document.getElementById(id);
  const services=[
-  {key:'maintenance',label:'الصيانة السريعة',icon:'fa-bolt',action:()=>window.openQuickMaintenanceModal?.()},
   {key:'treasury',label:'إدارة الخزن',icon:'fa-vault',action:()=>window.openTreasuryManagementModal?.()},
   {key:'expenses',label:'المصاريف',icon:'fa-money-bill-wave',action:()=>window.openExpensesModal?.()},
   {key:'workers',label:'العمال والأقسام',icon:'fa-users-gear',action:()=>window.openWorkersModal?.()},
@@ -7090,16 +7100,24 @@ function createClientSupplierHub(){
    const username=String(u.username||u.userName||u.fullName||u.name||raw||'المحاسب').trim();
    const shiftRef=db.collection('treasuries').doc('shift_cashbox');
    const all=await db.collection('treasuries').get();
-   let general=all.docs.find(d=>{const x=d.data()||{};return !x.isShiftTreasury&&(d.id==='general_treasury'||x.isDefault||x.isMain||x.defaultTreasury||/^(الخزينة العامة|الخزينة الرئيسية الافتراضية|الخزينة الرئيسية|خزينة رئيسية|الخزينة الافتراضية)$/i.test(String(x.name||'').trim()));});
-   if(!general) general=all.docs.find(d=>!(d.data()||{}).isShiftTreasury);
+   const isGeneralTreasury=d=>{
+     const x=d.data()||{};
+     const name=String(x.name||'').trim().replace(/\\s+/g,' ');
+     return !x.isShiftTreasury && (
+       d.id==='general_treasury' || x.isDefault===true || x.isMain===true || x.defaultTreasury===true ||
+       /^(الخزينة العامة|الخزينة العامة للمدير|الخزينة الرئيسية الافتراضية|الخزينة الرئيسية|خزينة رئيسية|الخزينة الافتراضية)$/i.test(name)
+     );
+   };
+   let general=all.docs.find(isGeneralTreasury);
    if(!general){
      const gr=db.collection('treasuries').doc('general_treasury');
-     await gr.set({name:'الخزينة العامة',balance:0,isDefault:true,createdAt:now,updatedAt:now},{merge:true});
+     await gr.set({name:'الخزينة العامة',balance:0,isDefault:true,isMain:true,createdAt:now,updatedAt:now},{merge:true});
      general=await gr.get();
    }
    const generalRef=db.collection('treasuries').doc(general.id);
-   const transferRef=db.collection('cash_shift_transfers').doc(String(transferKey).replace(/[^a-zA-Z0-9_-]/g,'_'));
-   const movementRef=db.collection('treasury_transactions').doc('shift_transfer_'+String(transferKey).replace(/[^a-zA-Z0-9_-]/g,'_'));
+   const safeKey=String(transferKey||('shift_'+(shift?.id||Date.now()))).replace(/[^a-zA-Z0-9_-]/g,'_');
+   const transferRef=db.collection('cash_shift_transfers').doc(safeKey);
+   const movementRef=db.collection('treasury_transactions').doc('shift_transfer_'+safeKey);
    let moved=0;
    await db.runTransaction(async tx=>{
      const [shiftSnap,generalSnap,transferSnap]=await Promise.all([tx.get(shiftRef),tx.get(generalRef),tx.get(transferRef)]);
@@ -7107,8 +7125,9 @@ function createClientSupplierHub(){
      const current=Number((shiftSnap.data()||{}).balance)||0;
      const generalBalance=Number((generalSnap.data()||{}).balance)||0;
      moved=current;
+     // تصفير خزينة الشيفت وإضافة الرصيد للخزينة العامة في نفس المعاملة الذرية.
      tx.set(shiftRef,{name:'خزينة الشيفت',isShiftTreasury:true,balance:0,updatedAt:now,lastTransferredAt:now,transferredBy:username},{merge:true});
-     if(current!==0) tx.set(generalRef,{balance:generalBalance+current,updatedAt:now,lastShiftTransferAt:now},{merge:true});
+     tx.set(generalRef,{name:(generalSnap.data()||{}).name||'الخزينة العامة',isDefault:true,isMain:true,balance:generalBalance+current,updatedAt:now,lastShiftTransferAt:now},{merge:true});
      tx.set(transferRef,{amount:current,reason,username,employeeName:u.fullName||u.name||username,shiftId:shift?.id||null,fromTreasuryId:'shift_cashbox',toTreasuryId:general.id,createdAt:now,status:'completed'},{merge:true});
      if(current!==0) tx.set(movementRef,{type:'ترحيل رصيد خزينة الشيفت',direction:'transfer',amount:current,fromTreasuryId:'shift_cashbox',toTreasuryId:general.id,createdAt:now,dateFormatted:new Date(now).toLocaleString('ar-EG'),cashier:username,employeeName:u.fullName||u.name||username,shiftId:shift?.id||null,notes:reason},{merge:true});
    });
@@ -7116,6 +7135,7 @@ function createClientSupplierHub(){
    const remaining=Number((verify.data()||{}).balance)||0;
    if(Math.abs(remaining)>0.000001) throw new Error('لم يتم تصفير خزينة الشيفت. الرصيد المتبقي: '+remaining);
    window.loadFinancialStats?.();
+   if(typeof window.loadTreasuriesData==='function') await window.loadTreasuriesData();
    return moved;
  }
  window.transferCashierShiftBalance=async function(){
@@ -7126,7 +7146,13 @@ function createClientSupplierHub(){
      const shift=readActiveEmployeeShift();
      const key='manual_'+(shift?.id||employeeShiftName())+'_'+Date.now();
      const amount=await transferShiftBalanceToGeneral('ترحيل يدوي من صفحة الكاشير',shift,key);
-     alert('تم ترحيل '+amount.toLocaleString('ar-EG')+' جنيه إلى الخزينة العامة وتصفير خزينة الشيفت. يمكنك بدء العمل من رصيد صفر.');
+     // أعد تحميل الرصيد من Firestore مباشرة بعد الترحيل حتى لا تظل الواجهة تعرض القيمة القديمة.
+     const shiftBalanceSnap=await db.collection('treasuries').doc('shift_cashbox').get();
+     const remainingShiftBalance=Number((shiftBalanceSnap.data()||{}).balance)||0;
+     if(Math.abs(remainingShiftBalance)>0.000001) throw new Error('تم تنفيذ طلب الترحيل لكن رصيد خزينة الشيفت ما زال '+remainingShiftBalance+'؛ لم يتم اعتبار العملية ناجحة.');
+     if(typeof loadTreasuriesData==='function') await loadTreasuriesData();
+     if(typeof loadFinancialStats==='function') await loadFinancialStats();
+     alert('تم ترحيل '+amount.toLocaleString('ar-EG')+' جنيه إلى الخزينة العامة. رصيد خزينة الشيفت الآن 0.00 جنيه.');
    }catch(e){alert('تعذر ترحيل الرصيد: '+(e.message||e));}
    finally{if(btn){btn.disabled=false;btn.innerHTML=btn.dataset.oldText||'<i class="fa-solid fa-arrow-right-arrow-left"></i> ترحيل رصيد الشيفت للخزينة العامة';}}
  };
@@ -7444,18 +7470,61 @@ async function searchClientLifeStatement(){
     });
    }catch(e){console.warn('تعذر قراءة '+col,e)}
   }
-  const priority={'invoices_archive':3,'workshop_archive':2,'client_accounts':1};
+  const priority={'invoices_archive':4,'workshop_archive':3,'client_accounts':2};
   const unique=new Map();
   for(const r of records){
-   const invoice=val(r,['invoiceSerial','invoiceNumber','receiptNo','orderNo']);
+   const invoice=val(r,['invoiceSerial','invoiceNumber','orderNo']);
    const isInvoice=['invoices_archive','workshop_archive','client_accounts'].includes(r.source);
-   const key=isInvoice&&invoice?'invoice:'+norm(invoice):r.source+':'+r.id;
+   const plate=norm(val(r,['carPlate','plate','vehicleNumber']));
+   const day=norm(val(r,['dateStr','invoiceDate','dateFormatted','date','createdAt'])).slice(0,10);
+   const totalKey=num(val(r,['totalAmount','grandTotal','total','totalSum','invoiceTotal'])).toFixed(2);
+   const identity=invoice?('invoice:'+norm(invoice)):(plate&&day?'visit:'+plate+':'+day+':'+totalKey:(r.source+':'+r.id));
+   const key=isInvoice?identity:(r.source+':'+r.id);
    if(!unique.has(key)){unique.set(key,r);continue}
    const old=unique.get(key);
-   unique.set(key,(priority[r.source]||0)>(priority[old.source]||0)?{...old,...r}:{...r,...old});
+   const winner=(priority[r.source]||0)>(priority[old.source]||0)?r:old;
+   const loser=winner===r?old:r;
+   unique.set(key,{...loser,...winner});
   }
-  const rows=[...unique.values()];
-  const invoiceRows=rows.filter(r=>['invoices_archive','workshop_archive','client_accounts'].includes(r.source));
+  // إزالة تكرار الحركات المالية التي تُحفظ أحياناً في أكثر من مجموعة
+  // (إيصال التحصيل + حركة الخزينة + سجل الحسابات) مع الحفاظ على الدفعات المستقلة.
+  const invoiceSources=['invoices_archive','workshop_archive','client_accounts'];
+  const operationSources=['client_collection_receipts','client_advance_payments','client_advance_refunds','treasury_transactions','accounting_queue','cars'];
+  const operationPriority={client_collection_receipts:7,client_advance_payments:6,client_advance_refunds:6,treasury_transactions:5,accounting_queue:3,cars:1};
+  // نبدأ من نتائج إزالة تكرار الفواتير قبل إنشاء متغير rows النهائي.
+  const baseRows=[...unique.values()];
+  const operationRows=baseRows.filter(r=>operationSources.includes(r.source));
+  const nonOperationRows=baseRows.filter(r=>!operationSources.includes(r.source));
+  const operationSeen=new Map(), dedupedOperations=[];
+  const cleanRef=v=>norm(v).replace(/[^\p{L}\p{N}]/gu,'');
+  const operationDate=r=>{
+    let v=val(r,['dateStr','dateFormatted','date','createdAt','timestamp','created_at','paymentDate']);
+    if(v&&typeof v==='object'&&typeof v.toDate==='function')v=v.toDate();
+    const d=v instanceof Date?v:new Date(typeof v==='number'?(v<1e12?v*1000:v):v||0);
+    return isNaN(d.getTime())?'':d.toISOString().slice(0,10);
+  };
+  for(const r of operationRows){
+    const amount=num(val(r,['amount','paidAmount','paymentAmount','refundedAmount','expenseAmount','value','totalAmount']));
+    const invoiceRef=cleanRef(val(r,['invoiceSerial','invoiceNumber','orderNo','relatedInvoice','referenceInvoice']));
+    const explicit=cleanRef(val(r,['paymentId','receiptNo','transactionId','movementId','operationId','referenceId','receiptId','transferId','idempotencyKey']));
+    const kind=cleanRef(val(r,['type','direction','operationType','status','method','sourceType']));
+    const day=operationDate(r);
+    const customer=cleanRef(val(r,['clientName','customerName','name','clientPhone','phone','carPlate','plate']));
+    // المرجع الصريح هو أفضل مفتاح؛ لا نستخدم رقم الفاتورة وحده لأن الفاتورة قد يكون لها أكثر من دفعة.
+    const key=explicit?'ref:'+explicit:(day&&amount!==0?'fallback:'+[customer,invoiceRef,day,amount.toFixed(2),kind].join('|'):'doc:'+r.source+':'+r.id);
+    const prior=operationSeen.get(key);
+    if(!prior){operationSeen.set(key,r);dedupedOperations.push(r);continue;}
+    // المفاتيح المركبة الاحتياطية لا تدمج سجلين من نفس المجموعة، لاحتمال وجود دفعتين متساويتين في اليوم.
+    if(!explicit&&prior.source===r.source){dedupedOperations.push(r);continue;}
+    const winner=(operationPriority[r.source]||0)>(operationPriority[prior.source]||0)?r:prior;
+    const loser=winner===r?prior:r;
+    const merged={...loser,...winner};
+    const idx=dedupedOperations.indexOf(prior);
+    if(idx>=0)dedupedOperations[idx]=merged;
+    operationSeen.set(key,merged);
+  }
+  const rows=[...nonOperationRows,...dedupedOperations];
+  const invoiceRows=rows.filter(r=>invoiceSources.includes(r.source));
   const getDate=r=>val(r,['dateFormatted','dateStr','invoiceDate','date','createdAt','timestamp','created_at']);
   invoiceRows.sort((a,b)=>{const da=new Date(getDate(a)||0).getTime()||0,dbb=new Date(getDate(b)||0).getTime()||0;return dbb-da;});
   if(!rows.length){out.innerHTML='<p style="text-align:center;padding:24px">لم يتم العثور على زيارات أو تعاملات مطابقة. جرّب الاسم الكامل أو رقم الهاتف المسجل.</p>';return}
@@ -8166,7 +8235,7 @@ function printClientLifeStatement(){const content=document.getElementById('clien
  window.nonCurrentRole=role;
  window.nonHasPermission=function(action){
    if(window.nonCurrentRole==='manager')return true;
-   const cashierAllowed=new Set(['maintenance','expenses','clients','advance-payment','client-statement','collections','suppliers','invoices','shift','daily-close','invoice-pay','invoice-whatsapp','print','view']);
+   const cashierAllowed=new Set(['expenses','clients','advance-payment','client-statement','collections','suppliers','invoices','shift','daily-close','invoice-pay','invoice-whatsapp','print','view']);
    const viewerAllowed=new Set(['clients','client-statement','archive','invoices','view','print']);
    return (window.nonCurrentRole==='cashier'?cashierAllowed:viewerAllowed).has(action);
  };
@@ -8363,7 +8432,11 @@ function printClientLifeStatement(){const content=document.getElementById('clien
 </body>
 </html>
 <style id="hesabat-archive-dedup-delete-and-profit-summary">
-#archiveModal #archivePrintArea{overflow:visible!important}
+#archiveModal #archivePrintArea{overflow-y:auto!important;overflow-x:auto!important;max-height:calc(88vh - 190px)!important;min-height:0!important;flex:1 1 auto!important;scroll-behavior:smooth;overscroll-behavior:contain; scrollbar-width:thin;}
+#archiveModal>div{min-height:0!important}
+#archiveModal #archivePrintArea::-webkit-scrollbar{width:11px;height:11px}
+#archiveModal #archivePrintArea::-webkit-scrollbar-thumb{background:#64748b;border-radius:10px;border:2px solid var(--card-bg)}
+#archiveModal #archivePrintArea::-webkit-scrollbar-track{background:rgba(100,116,139,.12)}
 #archiveModal #archiveTableBody td{vertical-align:middle}
 #archiveModal #archiveTableBody td:last-child{min-width:245px;line-height:1.8}
 #archiveModal #archiveTableBody td:last-child button{display:inline-flex!important;align-items:center;justify-content:center;margin:3px 2px;white-space:nowrap}
@@ -9858,5 +9931,32 @@ body.non-role-cashier .stat-mini-card:has(#statTreasuryTotal){display:none!impor
   const observer=new MutationObserver(applyButtonVisibility);
   observer.observe(document.documentElement,{subtree:true,childList:true});
   setTimeout(()=>{applyButtonVisibility();},700);
+})();
+</script>
+
+<script id="hesabat-requested-fixes-v9">
+(function(){
+  const $=id=>document.getElementById(id);
+  function installArchiveScroll(){
+    const modal=$('archiveModal'); if(!modal||modal.dataset.scrollArrows==='1')return;
+    const area=$('archivePrintArea'); if(!area)return;
+    modal.dataset.scrollArrows='1';
+    const bar=document.createElement('div');
+    bar.className='no-print'; bar.style.cssText='display:flex;gap:10px;justify-content:center;align-items:center;flex:0 0 auto;margin:0 0 8px;position:relative;z-index:4;background:var(--card-bg);padding:6px;border-radius:8px';
+    bar.innerHTML='<button type="button" class="btn-action btn-blue" id="archiveScrollUpBtn" title="الانتقال لأعلى الأرشيف"><i class="fa-solid fa-arrow-up"></i> أعلى</button><button type="button" class="btn-action btn-blue" id="archiveScrollDownBtn" title="الانتقال لأسفل الأرشيف"><i class="fa-solid fa-arrow-down"></i> أسفل</button>';
+    area.parentNode.insertBefore(bar,area);
+    $('archiveScrollUpBtn').addEventListener('click',()=>area.scrollBy({top:-Math.max(240,area.clientHeight*0.8),behavior:'smooth'}));
+    $('archiveScrollDownBtn').addEventListener('click',()=>area.scrollBy({top:Math.max(240,area.clientHeight*0.8),behavior:'smooth'}));
+  }
+  function removeMaintenanceForTargetRoles(){
+    const role=String(window.nonCurrentRole||'').toLowerCase();
+    if(!['manager','cashier'].includes(role))return;
+    document.querySelectorAll('[data-quick="maintenance"]').forEach(el=>el.remove());
+    document.querySelectorAll('#nonQuickOptions [data-key="maintenance"]').forEach(el=>el.closest('label')?.remove());
+  }
+  document.addEventListener('DOMContentLoaded',()=>{installArchiveScroll();removeMaintenanceForTargetRoles();});
+  const observer=new MutationObserver(()=>removeMaintenanceForTargetRoles());
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(installArchiveScroll,500); setTimeout(removeMaintenanceForTargetRoles,800);
 })();
 </script>
