@@ -1578,7 +1578,7 @@ function refreshEngineerIncoming(){
  if(shortcut){shortcut.classList.toggle('has-unread',engineerIncomingUnseen.length>0);shortcut.setAttribute('aria-label',engineerIncomingUnseen.length?`يوجد ${engineerIncomingUnseen.length} سيارة واردة جديدة`:'لا توجد إشعارات واردة جديدة');}
  if(count)count.textContent=String(engineerIncomingUnseen.length);
  if(!rows.length){body.innerHTML='<tr><td colspan="4" class="empty-table">لا توجد سيارات واردة من الأقسام أو الحسابات حالياً</td></tr>';return;}
- body.innerHTML=rows.map(c=>{const fromAccounting=c.status==='SENT_TO_TREASURY';return `<tr><td><b>${escapeHtml(c.clientName||c.name||'بدون اسم')}</b><br><small>${escapeHtml((c.brand||'')+' '+(c.model||''))} — ${escapeHtml(c.plate||'بدون لوحة')}</small></td><td>${fromAccounting?'<b style="color:#0f766e">الحسابات</b>':escapeHtml(c.repairDepartmentName||getDepartmentArabicName(c.repairDepartment)||'قسم')}</td><td>${escapeHtml(c.repairCompletedBy||c.activeTechnician||c.assignedTechnician||'غير محدد')}</td><td class="table-actions"><button class="btn-action-sm btn-primary" onclick="openEngineerCarReport('${c.id}')">التقرير</button> <button class="btn-action-sm" style="background:#0f766e;color:white" onclick="openEngineerPartsEditor('${c.id}')">البضاعة</button> ${fromAccounting?`<button class="btn-action-sm btn-dz" onclick="returnCarFromAccountingToEngineer('${c.id}')">إرجاع للمهندس</button>`:`<button class="btn-action-sm btn-lift" onclick="engineerRouteDepartment('${c.id}')">قسم آخر</button> <button class="btn-action-sm btn-dz" onclick="engineerSendAccounting('${c.id}')">حسابات</button>`} <button class="btn-action-sm btn-green" onclick="engineerRunTest('${c.id}')">اختبار</button></td></tr>`}).join('');
+ body.innerHTML=rows.map(c=>{const fromAccounting=c.status==='SENT_TO_TREASURY';return `<tr><td><b>${escapeHtml(c.clientName||c.name||'بدون اسم')}</b><br><small>${escapeHtml((c.brand||'')+' '+(c.model||''))} — ${escapeHtml(c.plate||'بدون لوحة')}</small></td><td>${fromAccounting?'<b style="color:#0f766e">الحسابات</b>':escapeHtml(c.repairDepartmentName||getDepartmentArabicName(c.repairDepartment)||'قسم')}</td><td>${escapeHtml(c.repairCompletedBy||c.activeTechnician||c.assignedTechnician||'غير محدد')}</td><td class="table-actions"><button class="btn-action-sm btn-primary" onclick="openEngineerCarReport('${c.id}')">التقرير</button> <button class="btn-action-sm" style="background:#7c3aed;color:white" onclick="openIncomingTechnicianReport('${c.id}')">تقرير الفني</button> <button class="btn-action-sm" style="background:#0f766e;color:white" onclick="openEngineerPartsEditor('${c.id}')">البضاعة</button> ${fromAccounting?`<button class="btn-action-sm btn-dz" onclick="returnCarFromAccountingToEngineer('${c.id}')">إرجاع للمهندس</button>`:`<button class="btn-action-sm btn-lift" onclick="engineerRouteDepartment('${c.id}')">قسم آخر</button> <button class="btn-action-sm btn-dz" onclick="engineerSendAccounting('${c.id}')">حسابات</button>`} <button class="btn-action-sm btn-green" onclick="engineerRunTest('${c.id}')">اختبار</button></td></tr>`}).join('');
 }
 
 function openEngineerArchiveModal(){
@@ -1822,6 +1822,56 @@ function renderEngineerLiftOptions(){
  const sel=document.getElementById('engineerExtraLift');if(!sel)return;
  sel.innerHTML='<option value="">بدون كوريك</option>'+liftsLocalData.filter(x=>x.active!==false&&x.status==='idle').map(x=>`<option value="${x.id}">${x.name} — ${x.technicianName||'فني غير محدد'}</option>`).join('');
 }
+</script>
+
+
+<style>ody.incoming-tech-report-open{overflow:hidden}
+#incomingTechReportModal{display:none;position:fixed;inset:0;z-index:1000000;background:#f1f5f9;overflow:auto;direction:rtl;color:#172338;padding:clamp(12px,3vw,28px)}
+#incomingTechReportModal.open{display:block}#incomingTechReportModal .itr-wrap{max-width:1050px;margin:auto}
+#incomingTechReportModal .itr-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#172f50;color:white;padding:18px;border-radius:16px;margin-bottom:16px}
+#incomingTechReportModal .itr-card{background:white;border:1px solid #dbe4ef;border-radius:14px;padding:16px;margin-bottom:14px}
+#incomingTechReportModal .itr-buttons{display:flex;gap:8px;flex-wrap:wrap}#incomingTechReportModal .itr-gallery{display:flex;gap:10px;flex-wrap:wrap}
+#incomingTechReportModal .itr-gallery img{width:160px;height:130px;object-fit:contain;background:#f8fafc;border:1px solid #dbe4ef;border-radius:10px}
+#incomingTechReportModal audio{width:100%;margin:8px 0}#incomingTechReportModal .itr-text{white-space:pre-wrap;line-height:1.9;min-height:80px}
+</style>
+<div id="incomingTechReportModal" aria-hidden="true"><div class="itr-wrap">
+<header class="itr-head"><div><div style="opacity:.8;font-size:.8rem">NON • تقرير الفني</div><h2 style="margin:5px 0">تقرير الفني المسئول</h2><div id="itrCarDetails"></div></div><div class="itr-buttons"><button class="btn-action-sm btn-green" onclick="shareIncomingTechReport()"><i class="fa-brands fa-whatsapp"></i> إرسال للعميل واتساب</button><button class="btn-action-sm btn-neutral" onclick="closeIncomingTechnicianReport()">إغلاق</button></div></header>
+<section class="itr-card"><h3>التقرير الفني</h3><div id="itrReportText" class="itr-text">لا يوجد تقرير فني مسجل.</div></section>
+<section class="itr-card"><h3>الصور المرفقة</h3><div id="itrImages" class="itr-gallery">لا توجد صور.</div></section>
+<section class="itr-card"><h3>الفويس نوت</h3><div id="itrAudios">لا توجد فويس نوت.</div></section>
+</div></div>
+<script>
+(function(){
+ let activeReportCar=null;
+ const byId=id=>document.getElementById(id);
+ const escTechReport=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ function normalizeTechPhone(v){let n=String(v||'').replace(/\D/g,'');if(n.startsWith('0'))n='20'+n.slice(1);return n;}
+ window.openIncomingTechnicianReport=async function(id){
+  let c=allCarsLocalData.find(x=>x.id===id)||engineerIncomingCars.find(x=>x.id===id)||{};
+  try{const snap=await db.collection('cars').doc(id).get();if(snap.exists)c={id,...snap.data()};}catch(e){console.warn('تعذر تحديث بيانات تقرير الفني',e)}
+  activeReportCar=c;
+  const images=Array.isArray(c.mechanicsTechReportImages)?c.mechanicsTechReportImages:[];
+  let audios=Array.isArray(c.mechanicsTechVoiceNotes)?c.mechanicsTechVoiceNotes:[];
+  if(!audios.length&&(c.mechanicsTechVoiceNoteUrl||c.mechanicsTechVoiceNoteDataUrl))audios=[{url:c.mechanicsTechVoiceNoteUrl,dataUrl:c.mechanicsTechVoiceNoteDataUrl,type:c.mechanicsTechVoiceNoteType||'audio/webm'}];
+  byId('itrCarDetails').textContent=`${c.clientName||c.name||'عميل'} • ${(c.brand||'')+' '+(c.model||'')} • ${c.plate||c.carPlate||'بدون لوحة'}`;
+  byId('itrReportText').textContent=c.mechanicsTechNotes||c.mechanicsTechReport||c.repairReport||'لا يوجد تقرير فني مسجل.';
+  byId('itrImages').innerHTML=images.length?images.map((im,i)=>`<a href="${escTechReport(im.url||im.dataUrl||'')}" target="_blank" rel="noopener"><img src="${escTechReport(im.url||im.dataUrl||'')}" alt="صورة التقرير ${i+1}"></a>`).join(''):'لا توجد صور مرفقة.';
+  byId('itrAudios').innerHTML=audios.length?audios.map((a,i)=>`<div class="itr-card"><b>فويس نوت ${i+1}</b><audio controls preload="metadata" src="${escTechReport(a.url||a.dataUrl||'')}"></audio>${a.url?`<a href="${escTechReport(a.url)}" target="_blank" rel="noopener">فتح/تنزيل الفويس</a>`:''}</div>`).join(''):'لا توجد فويس نوت.';
+  byId('incomingTechReportModal').classList.add('open');byId('incomingTechReportModal').setAttribute('aria-hidden','false');document.body.classList.add('incoming-tech-report-open');
+ };
+ window.closeIncomingTechnicianReport=function(){byId('incomingTechReportModal').classList.remove('open');byId('incomingTechReportModal').setAttribute('aria-hidden','true');document.body.classList.remove('incoming-tech-report-open');};
+ window.shareIncomingTechReport=async function(){
+  const c=activeReportCar||{},imgs=Array.isArray(c.mechanicsTechReportImages)?c.mechanicsTechReportImages:[];let aud=Array.isArray(c.mechanicsTechVoiceNotes)?c.mechanicsTechVoiceNotes:[];
+  if(!aud.length&&(c.mechanicsTechVoiceNoteUrl||c.mechanicsTechVoiceNoteDataUrl))aud=[{url:c.mechanicsTechVoiceNoteUrl,dataUrl:c.mechanicsTechVoiceNoteDataUrl}];
+  const report=c.mechanicsTechNotes||c.mechanicsTechReport||c.repairReport||'';
+  const lines=['تقرير الفني المسئول - NON',`العميل: ${c.clientName||c.name||'—'}`,`السيارة: ${(c.brand||'')+' '+(c.model||'')}`,`رقم اللوحة: ${c.plate||c.carPlate||'—'}`,'','التقرير الفني:',report];
+  const links=[];imgs.forEach((im,i)=>{if(im.url)links.push(`صورة ${i+1}: ${im.url}`)});aud.forEach((a,i)=>{if(a.url)links.push(`فويس نوت ${i+1}: ${a.url}`)});
+  const message=lines.join('\n')+(links.length?'\n\nمرفقات التقرير:\n'+links.join('\n'):'');const files=[];
+  try{for(let i=0;i<imgs.length;i++){const im=imgs[i];const url=im.url||im.dataUrl;if(!url)continue;const blob=url.startsWith('data:')?await (await fetch(url)).blob():await (await fetch(url)).blob();files.push(new File([blob],im.name||`report-photo-${i+1}.jpg`,{type:blob.type||'image/jpeg'}))}for(let i=0;i<aud.length;i++){const a=aud[i],url=a.url||a.dataUrl;if(!url)continue;const blob=await(await fetch(url)).blob();files.push(new File([blob],`voice-note-${i+1}.webm`,{type:blob.type||a.type||'audio/webm'}))}}catch(e){console.warn('تعذر تجهيز بعض المرفقات للمشاركة',e)}
+  if(files.length&&navigator.share&&navigator.canShare&&navigator.canShare({files})){try{await navigator.share({title:'تقرير الفني',text:message,files});return}catch(e){if(e.name==='AbortError')return}}
+  const phone=normalizeTechPhone(c.phone||c.clientPhone||c.mobile||c.customerPhone);window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(message),'_blank');alert('فتحنا واتساب بنص التقرير وروابط المرفقات المتاحة. لإرسال الصور والفويس كملفات، استخدم قائمة المشاركة على جهاز يدعم مشاركة الملفات.');
+ };
+})();
 </script>
 
 </body>
