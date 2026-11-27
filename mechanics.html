@@ -242,6 +242,7 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
 
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 </head>
 <body id="pageBody" class="dept-mechanics">
 
@@ -382,7 +383,8 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
 
           <div class="form-field unified-report-item" style="margin-bottom: 0;">
             <label style="color:var(--btn-blue); font-weight:800; font-size: 0.9rem;"><i class="fa-solid fa-user-gear"></i> تقرير الفني المسئول:</label>
-            <textarea id="detailTechNotes" rows="3" style="font-weight: 700;" placeholder="اكتب تقرير وملاحظات فني الميكانيكا..."></textarea>
+            <button type="button" class="btn-action btn-blue" onclick="openTechnicianReport()" style="width:100%;justify-content:center;margin:4px 0 8px"><i class="fa-solid fa-file-lines"></i> فتح تقرير الفني في صفحة كاملة</button>
+            <textarea id="detailTechNotes" rows="3" readonly onclick="openTechnicianReport()" style="font-weight: 700;cursor:pointer" placeholder="اضغط هنا لفتح تقرير الفني في صفحة كاملة..."></textarea>
           </div>
         </div>
 
@@ -675,35 +677,39 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
     }).catch(err => console.warn('تعذر تحديث بيانات المخزون:', err));
 
     async function fetchInstallationServicesRealtime() {
+      // قائمة خدمات التركيب تُقرأ مباشرة من Firestore دون تخزينها محلياً.
       const collectionNames = ['services_list', 'services', 'installation_services', 'workshop_services'];
-      try {
-        const cached = JSON.parse(localStorage.getItem('non_installation_services') || '[]');
-        if (Array.isArray(cached)) availableServicesList = cached;
-      } catch (_) {}
-      renderInstallationServiceDropdown();
+      const serviceFields = ['name', 'serviceName', 'title', 'service_name'];
+      const freshServices = [];
 
-      // قراءة أولية متوازية بدلاً من فتح أربع قنوات onSnapshot دائمة.
       const snapshots = await Promise.all(collectionNames.map(colName =>
-        db.collection(colName).get().catch(err => {
+        db.collection(colName).get().then(snapshot => {
+          return { colName, snapshot };
+        }).catch(err => {
           console.warn('تعذر تحميل خدمات من ' + colName, err);
-          return null;
+          return { colName, snapshot: null };
         })
       ));
-      snapshots.forEach((snapshot, index) => {
-        if (!snapshot || snapshot.empty) return;
+
+      snapshots.forEach(({ colName, snapshot }) => {
+        if (!snapshot) return;
         snapshot.forEach(doc => {
-          const data = doc.data();
-          const sName = data.name || data.serviceName || data.title || data.service_name || '';
-          const sPrice = data.price || data.servicePrice || data.cost || data.service_price || 0;
-          if (sName && !availableServicesList.some(item => item.name === sName)) {
-            availableServicesList.push({ id: doc.id, collection: collectionNames[index], name: sName, price: sPrice });
-          }
+          const data = doc.data() || {};
+          const sName = serviceFields.map(field => data[field]).find(value => typeof value === 'string' && value.trim()) || '';
+          const sPrice = data.price ?? data.servicePrice ?? data.cost ?? data.service_price ?? 0;
+          if (!sName) return;
+          const normalized = sName.trim().toLocaleLowerCase();
+          const existing = freshServices.find(item => item.name.trim().toLocaleLowerCase() === normalized);
+          if (!existing) freshServices.push({ id: doc.id, collection: colName, name: sName.trim(), price: sPrice });
         });
       });
-      localStorage.setItem('non_installation_services', JSON.stringify(availableServicesList));
+
+      // لا نستخدم نسخة محلية بديلة عند فشل الاتصال؛ نعرض ما وصل من السيرفر فقط.
+      availableServicesList = freshServices;
       renderInstallationServiceDropdown();
     }
 
+    // تشغيل تحميل الخدمات عند فتح صفحة الفني.
     fetchInstallationServicesRealtime();
 
     function renderInstallationServiceDropdown() {
@@ -742,7 +748,8 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
         alert('⚠️ هذه الخدمة مضافة مسبقاً للسيارة.');
         return;
       }
-      selectedInstallationServices.push({ name: s.name, price: parseFloat(s.price) || 0 });
+      const unitPrice = Number(s.price ?? s.servicePrice ?? s.cost ?? s.service_price) || 0;
+      selectedInstallationServices.push({ name: s.name, price: unitPrice, unitPrice, quantity: 1 });
       storeLocalMechanicsDraft();
       document.getElementById('installationServiceSearchInput').value = '';
       document.getElementById('installationServiceDropdownList').style.display = 'none';
@@ -751,40 +758,44 @@ body.dept-mechanics .department-identity small {display:block;color:#ffffffd9;ma
     }
 
     async function deleteServicePermanentlyFromSystem(serviceName) {
-      const passwordInput = prompt("🔒 أدخل كلمة المرور (123) لتأكيد المسح النهائي من السيستم والمخزن:");
+      const passwordInput = prompt("🔒 أدخل كلمة المرور (123) لتأكيد حذف الخدمة نهائياً من قائمة خدمات التركيب:");
       if (passwordInput === null) return;
       if (passwordInput !== "123") {
         alert("❌ كلمة المرور غير صحيحة! تم إلغاء عملية الحذف.");
         return;
       }
+      if (!confirm(`هل تريد حذف الخدمة "${serviceName}" من قائمة خدمات التركيب على جميع الأجهزة؟`)) return;
 
-      availableServicesList = availableServicesList.filter(s => s.name !== serviceName);
-      localStorage.setItem('non_installation_services', JSON.stringify(availableServicesList));
-      renderInstallationServiceDropdown();
+      try {
+        const snap = await db.collection('installation_services')
+          .where('serviceName', '==', serviceName).get();
 
-      selectedInstallationServices = selectedInstallationServices.filter(s => s.name !== serviceName);
-      storeLocalMechanicsDraft();
-      renderInstallationServicesList();
-
-      const collectionNames = ['services_list', 'services', 'installation_services', 'workshop_services', 'inventory', 'treasury'];
-      for (const colName of collectionNames) {
-        try {
-          const snap = await db.collection(colName).where('name', '==', serviceName).get();
-          snap.forEach(async (doc) => {
-            await db.collection(colName).doc(doc.id).delete();
-          });
-          const snapTitle = await db.collection(colName).where('title', '==', serviceName).get();
-          snapTitle.forEach(async (doc) => {
-            await db.collection(colName).doc(doc.id).delete();
-          });
-        } catch (e) {
-          console.log("خطأ في الحذف من كوليكشن:", colName);
+        if (snap.empty) {
+          alert("لم يتم العثور على الخدمة في مجموعة installation_services على Firebase.");
+          await fetchInstallationServicesRealtime();
+          return;
         }
+
+        const batch = db.batch();
+        snap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
+        availableServicesList = availableServicesList.filter(item =>
+          String(item.name || '').trim() !== String(serviceName).trim()
+        );
+        selectedInstallationServices = selectedInstallationServices.filter(item =>
+          String(item.name || '').trim() !== String(serviceName).trim()
+        );
+        renderInstallationServiceDropdown();
+        renderInstallationServicesList();
+        await fetchInstallationServicesRealtime();
+
+        alert(`🗑️ تم حذف الخدمة "${serviceName}" من Firebase بنجاح.`);
+      } catch (err) {
+        console.error("خطأ حذف خدمة التركيب:", err);
+        alert("تعذر حذف الخدمة من Firebase: " + (err.message || err));
       }
-
-      alert(`🗑️ تم مسح الخدمة "${serviceName}" نهائياً من السيستم ومن الخزنة والمخزن بنجاح.`);
     }
-
     db.collection('cars').onSnapshot(snapshot => {
       allMechanicsCars = [];
       snapshot.forEach(doc => {
@@ -1035,6 +1046,16 @@ async function selectCar(carId) {
       localStorage.setItem('non_mechanics_selected_car', carId);
       const car = allMechanicsCars.find(c => c.id === carId);
       if (!car) return;
+      // مطابقة بند الخدمة القادم من التشخيص مع قسم الميكانيكا دون تغيير الاسم.
+      const assignedService = String(car.serviceType || car.diagnosisServiceType || '').trim();
+      if (assignedService) {
+        let matchingCategory = mechanicsSubCategories.find(c => c.name.trim() === assignedService);
+        if (!matchingCategory) {
+          matchingCategory = { name: assignedService, icon: "fa-folder-open" };
+          mechanicsSubCategories.push(matchingCategory);
+          saveSubCategoriesToStorage();
+        }
+      }
 
       document.getElementById('detailClientName').value = car.name || '';
       document.getElementById('detailClientPhone').value = car.phone || car.clientPhone || '';
@@ -1050,7 +1071,12 @@ async function selectCar(carId) {
       document.getElementById('detailDiagnosisNotes').value = extractedDiagnosis.trim() !== '' ? extractedDiagnosis : 'لا يوجد تقرير مهندس مسجل...';
 
       const defaultCat = mechanicsSubCategories[0] ? mechanicsSubCategories[0].name : '';
-      document.getElementById('detailSubCategory').value = car.mechanicsSubCategory || defaultCat;
+      const serviceCategory = car.serviceType || car.diagnosisServiceType || car.mechanicsSubCategory || defaultCat;
+      if (![...document.getElementById('detailSubCategory').options].some(o => o.value === serviceCategory)) {
+        const opt = document.createElement('option'); opt.value = serviceCategory; opt.textContent = serviceCategory;
+        document.getElementById('detailSubCategory').appendChild(opt);
+      }
+      document.getElementById('detailSubCategory').value = serviceCategory;
       document.getElementById('detailItemStatus').value = car.mechanicsItemStatus || 'قيد العمل';
       
       document.getElementById('detailTechNotes').value = car.mechanicsTechNotes || '';
@@ -1069,7 +1095,10 @@ async function selectCar(carId) {
 
       currentCarAttachments = car.attachments || [];
       currentRequiredParts = car.requiredPartsList || [];
-      selectedInstallationServices = car.installationServicesList || [];
+      selectedInstallationServices = (car.installationServicesList || []).map(item => {
+        const unitPrice = Number(item.unitPrice ?? item.price) || 0;
+        return { ...item, unitPrice, price: unitPrice, quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)) };
+      });
       beforeMaintenancePhotos = car.beforeMaintenancePhotos || [];
       afterMaintenancePhotos = car.afterMaintenancePhotos || [];
       
@@ -1158,6 +1187,18 @@ async function selectCar(carId) {
       saveMechanicsWorkDataSilently();
     }
 
+    function updateInstallationServiceQuantity(index, value) {
+      const item = selectedInstallationServices[index];
+      if (!item) return;
+      const quantity = Math.max(1, Math.floor(Number(value) || 1));
+      item.quantity = quantity;
+      item.unitPrice = Number(item.unitPrice ?? item.price) || 0;
+      item.price = item.unitPrice;
+      item.totalPrice = item.unitPrice * quantity;
+      renderInstallationServicesList();
+      saveMechanicsWorkDataSilently();
+    }
+
     function renderInstallationServicesList() {
       const container = document.getElementById('installationServicesContainer');
       if (!container) return;
@@ -1166,22 +1207,32 @@ async function selectCar(carId) {
         return;
       }
 
-      let html = '<div style="display:flex; flex-direction:column; gap:6px; margin-top:5px;">';
+      let grandTotal = 0;
+      let html = '<div style="display:flex; flex-direction:column; gap:7px; margin-top:5px;">';
       selectedInstallationServices.forEach((item, idx) => {
+        const unitPrice = Number(item.unitPrice ?? item.price) || 0;
+        const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const lineTotal = unitPrice * quantity;
+        grandTotal += lineTotal;
         html += `
-          <div style="background:var(--card-bg); border:1px solid var(--border-color); padding:8px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-            <span><i class="fa-solid fa-check-circle" style="color:var(--primary-orange);"></i> <b>${item.name}</b></span>
-            <div style="display:flex; gap:4px;">
-              <button type="button" class="btn-action btn-danger" style="padding:2px 8px; font-size:0.75rem;" onclick="removeInstallationServiceItem(${idx})" title="إزالة الخدمة من السيارة"><i class="fa-solid fa-xmark"></i> إزالة</button>
-              <button type="button" class="btn-action btn-danger" style="padding:2px 8px; font-size:0.75rem; background:#7f1d1d;" onclick="deleteServicePermanentlyFromSystem('${item.name}')" title="مسح نهائي من السيستم والخزنة والمخزن"><i class="fa-solid fa-trash"></i> مسح نهائي</button>
+          <div style="background:var(--card-bg); border:1px solid var(--border-color); padding:9px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="min-width:150px; flex:1;">
+              <div><i class="fa-solid fa-check-circle" style="color:var(--primary-orange);"></i> <b>${item.name}</b></div>
+              <small style="display:block;color:var(--btn-green);margin-top:4px;">سعر الوحدة: ${unitPrice.toLocaleString('en-US')} ج.م</small>
+              <small style="display:block;color:var(--primary-orange);margin-top:3px;">الإجمالي: ${lineTotal.toLocaleString('en-US')} ج.م</small>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <label style="font-size:.8rem;font-weight:bold;">العدد</label>
+              <input type="number" min="1" step="1" value="${quantity}" onchange="updateInstallationServiceQuantity(${idx}, this.value)" style="width:72px;padding:6px;border:1px solid var(--border-color);border-radius:6px;text-align:center;">
+              <button type="button" class="btn-action btn-danger" style="padding:4px 8px;font-size:.75rem;" onclick="removeInstallationServiceItem(${idx})" title="إزالة الخدمة من السيارة"><i class="fa-solid fa-xmark"></i> إزالة</button>
+              <button type="button" class="btn-action btn-danger" style="padding:4px 8px;font-size:.75rem;background:#7f1d1d;" onclick='deleteServicePermanentlyFromSystem(${JSON.stringify(item.name)})' title="حذف الخدمة نهائياً من قائمة الخدمات"><i class="fa-solid fa-trash"></i> مسح نهائي</button>
             </div>
           </div>
         `;
       });
-      html += '</div>';
+      html += `</div><div style="margin-top:9px;padding:9px;border-radius:8px;background:rgba(16,185,129,.08);font-weight:800;display:flex;justify-content:space-between;"><span>إجمالي خدمات التركيب</span><span>${grandTotal.toLocaleString('en-US')} ج.م</span></div>`;
       container.innerHTML = html;
     }
-
     function openInventoryDropdown() {
       document.getElementById('inventoryDropdownList').style.display = 'block';
       filterInventoryList();
@@ -1664,6 +1715,7 @@ async function selectCar(carId) {
           mechanicsSubCategory: subCat,
           mechanicsItemStatus: itemStatus,
           mechanicsTechNotes: techNotes,
+          mechanicsTechReportImages: (allMechanicsCars.find(c => c.id === currentSelectedCarId)?.mechanicsTechReportImages || []),
           mechanicsDiagnosisNotes: document.getElementById('detailDiagnosisNotes').value || '',
           assignedTechnician: techName,
           requiredPartsList: currentRequiredParts,
@@ -2103,5 +2155,157 @@ async function returnCarToEngineer(){
  try{const selectedTimerCar=allMechanicsCars.find(x=>x.id===currentSelectedCarId);if(selectedTimerCar?.mechanicsTimerStartedAt)await pauseMaintenanceTimer();const car=allMechanicsCars.find(x=>x.id===currentSelectedCarId)||{};await db.collection('cars').doc(currentSelectedCarId).set({...report,status:'RETURNED_TO_ENGINEER',statusLabel:'انتهى عمل القسم — بانتظار المهندس',targetDepartment:'diagnosis',showOnDisplay:true,mechanicsWorkStarted:false,activeTechnician:'',claimedByUser:'',mechanicsReleasedAt:new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true});const liftId=car.assignedLiftId;if(liftId)await db.collection('lifts').doc(liftId).set({status:'idle',active:true,carId:null,carClientName:null,busySince:null,lastUpdatedAt:new Date().toISOString()},{merge:true});alert('تم تحرير الكوريك وإرجاع السيارة للمهندس بالتقرير وقطع الغيار والخدمات.');currentSelectedCarId=null;if(maintenanceTimerInterval){clearInterval(maintenanceTimerInterval);maintenanceTimerInterval=null;}localStorage.removeItem('non_mechanics_selected_car');renderCarsList();}catch(e){alert('تعذر إرجاع السيارة: '+e.message);}
 }
 </script>
+
+<style>
+#techReportOverlay{display:none;position:fixed;inset:0;z-index:999999;background:#f3f6fb;overflow:auto;direction:rtl;color:#172338;padding:clamp(12px,3vw,34px)}
+#techReportOverlay.open{display:block}
+#techReportOverlay .tr-wrap{max-width:1100px;margin:auto}
+#techReportOverlay .tr-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#142b49;color:white;padding:18px;border-radius:18px;margin-bottom:16px}
+#techReportOverlay .tr-card{background:white;border:1px solid #e1e8f2;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 8px 25px #142b490d}
+#techReportOverlay textarea{width:100%;min-height:190px;padding:14px;border:1px solid #dbe4ef;border-radius:12px;font-size:1rem;line-height:1.8;resize:vertical}
+#techReportOverlay .tr-actions{display:flex;gap:8px;flex-wrap:wrap}
+#techReportOverlay .tr-previews{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+#techReportOverlay .tr-previews img{width:120px;height:100px;object-fit:cover;border-radius:10px;border:1px solid #dbe4ef}
+#techReportOverlay .tr-audio{display:block;width:100%;margin-top:10px}
+#techReportOverlay .tr-muted{color:#64748b;font-size:.85rem}
+body.tech-report-open{overflow:hidden}
+</style>
+<div id="techReportOverlay" aria-hidden="true">
+ <div class="tr-wrap">
+  <header class="tr-head"><div><div style="font-size:.75rem;opacity:.8">NON • قسم الميكانيكا</div><h1 style="font-size:1.35rem;margin-top:5px">تقرير الفني المسئول</h1><div id="trCarInfo" style="opacity:.85;margin-top:5px">اختر سيارة أولاً</div></div><div class="tr-actions"><button class="btn-action btn-green" type="button" onclick="saveTechnicianReport()"><i class="fa-solid fa-floppy-disk"></i> حفظ التقرير</button><button class="btn-action btn-dark" type="button" onclick="closeTechnicianReport()"><i class="fa-solid fa-xmark"></i> إغلاق</button></div></header>
+  <section class="tr-card"><label style="font-weight:900;display:block;margin-bottom:10px">تفاصيل التقرير الفني</label><textarea id="trReportText" placeholder="اكتب التشخيص الفني، الأعمال المنفذة، الملاحظات والتوصيات..."></textarea><div class="tr-muted" style="margin-top:8px">سيتم مزامنة التقرير مع خانة تقرير الفني في بيانات السيارة.</div></section>
+  <section class="tr-card"><h3 style="margin-bottom:12px">إرفاق الصور</h3><div class="tr-actions"><button class="btn-action btn-primary" type="button" onclick="document.getElementById('trCameraInput').click()"><i class="fa-solid fa-camera"></i> التقاط صورة</button><button class="btn-action btn-blue" type="button" onclick="document.getElementById('trImagesInput').click()"><i class="fa-solid fa-images"></i> اختيار صور متعددة</button></div><input id="trCameraInput" type="file" accept="image/*" capture="environment" style="display:none"><input id="trImagesInput" type="file" accept="image/*" multiple style="display:none"><div id="trImagesPreview" class="tr-previews"></div></section>
+  <section class="tr-card"><h3 style="margin-bottom:12px">الفويس نوت (يمكن تسجيل أكثر من فويس)</h3><div class="tr-actions"><button class="btn-action btn-primary" type="button" id="trRecordBtn" onclick="toggleTechRecording()"><i class="fa-solid fa-microphone"></i> بدء التسجيل</button><button class="btn-action btn-blue" type="button" onclick="startArabicSpeechRecognition()"><i class="fa-solid fa-language"></i> تحويل الكلام إلى نص عربي</button><button class="btn-action btn-dark" type="button" onclick="stopArabicSpeechRecognition()">إيقاف التحويل</button></div><div id="trVoiceStatus" class="tr-muted" style="margin-top:10px">سجّل فويس نوت ثم اضغط إيقاف، ويمكنك بدء تسجيل آخر. ستظهر التسجيلات داخل التقرير.</div><div id="trAudioFiles"></div></section>
+  <section class="tr-card"><h3 style="margin-bottom:12px">إرسال التقرير للعميل</h3><div class="tr-muted">سيتم تجهيز نص التقرير والصور والفويس نوت للمشاركة عبر واتساب. قد يطلب الهاتف اختيار WhatsApp من قائمة المشاركة.</div><button class="btn-action btn-green" style="margin-top:12px" type="button" onclick="shareTechnicianReportWhatsApp()"><i class="fa-brands fa-whatsapp"></i> إرسال التقرير للعميل واتساب</button></section>
+ </div>
+</div>
+<script>
+(function(){
+ let reportImages=[], recorder=null, chunks=[], recordedAudios=[], speech=null, speechActive=false;
+ const $=id=>document.getElementById(id);
+ const getCar=()=>((allMechanicsCars||[]).find(c=>c.id===currentSelectedCarId)||{});
+ window.openTechnicianReport=function(){
+  if(!currentSelectedCarId){alert('اختر سيارة أولاً');return}
+  const car=getCar();
+  $('trReportText').value=$('detailTechNotes')?.value||car.mechanicsTechNotes||'';
+  $('trCarInfo').textContent=car?`${car.name||'عميل'} • ${car.brand||''} ${car.model||''} • ${car.plate||''}`:'تقرير السيارة الحالية';
+  reportImages=Array.isArray(car.mechanicsTechReportImages)?car.mechanicsTechReportImages.slice():[];
+  recordedAudios=Array.isArray(car.mechanicsTechVoiceNotes)?car.mechanicsTechVoiceNotes.slice():[];
+  if(!recordedAudios.length&&(car.mechanicsTechVoiceNoteUrl||car.mechanicsTechVoiceNoteDataUrl)){
+    recordedAudios=[{url:car.mechanicsTechVoiceNoteUrl||'',dataUrl:car.mechanicsTechVoiceNoteDataUrl||'',type:car.mechanicsTechVoiceNoteType||'audio/webm'}];
+  }
+  renderImages();renderAudios();
+  $('techReportOverlay').classList.add('open');$('techReportOverlay').setAttribute('aria-hidden','false');document.body.classList.add('tech-report-open');
+ };
+ window.closeTechnicianReport=function(){
+  $('techReportOverlay').classList.remove('open');$('techReportOverlay').setAttribute('aria-hidden','true');document.body.classList.remove('tech-report-open');
+ };
+ async function addImageFiles(files){
+  for(const file of [...files]){if(!file.type.startsWith('image/'))continue;try{const data=await fileToDataURL(file);reportImages.push({name:file.name||('صورة '+(reportImages.length+1)),dataUrl:data,addedAt:new Date().toISOString()})}catch(err){console.error(err)}}
+  renderImages();
+ }
+ $('trImagesInput').addEventListener('change',async e=>{await addImageFiles(e.target.files);e.target.value=''});
+ $('trCameraInput').addEventListener('change',async e=>{await addImageFiles(e.target.files);e.target.value=''});
+ function fileToDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)})}
+ function dataUrlToBlob(dataUrl){const [head,body]=dataUrl.split(',');const mime=(head.match(/:(.*?);/)||[])[1]||'application/octet-stream';const binary=atob(body);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return new Blob([bytes],{type:mime})}
+ function renderImages(){
+  $('trImagesPreview').innerHTML=reportImages.map((im,i)=>`<div style="position:relative"><img src="${im.dataUrl||im.url}" alt="صورة التقرير"><button type="button" class="btn-action btn-danger" style="padding:3px 8px;position:absolute;top:2px;left:2px" onclick="removeTechReportImage(${i})">×</button></div>`).join('');
+ }
+ function renderAudios(){
+  $('trAudioFiles').innerHTML=recordedAudios.map((a,i)=>`<div class="tr-card" style="padding:10px;margin-top:10px"><div style="font-weight:800;margin-bottom:6px">فويس نوت ${i+1}</div><audio class="tr-audio" controls src="${a.url||a.dataUrl||a.previewUrl||''}"></audio><button type="button" class="btn-action btn-danger" style="margin-top:8px" onclick="removeTechReportAudio(${i})">حذف الفويس</button></div>`).join('');
+ }
+ window.removeTechReportImage=i=>{reportImages.splice(i,1);renderImages()};
+ window.removeTechReportAudio=i=>{recordedAudios.splice(i,1);renderAudios()};
+ window.toggleTechRecording=async function(){
+  if(recorder&&recorder.state==='recording'){recorder.stop();$('trRecordBtn').innerHTML='<i class="fa-solid fa-microphone"></i> بدء تسجيل فويس آخر';return}
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){$('trVoiceStatus').textContent='المتصفح لا يدعم تسجيل الصوت.';return}
+  try{
+   const stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];
+   recorder=new MediaRecorder(stream);
+   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+   recorder.onstop=()=>{
+    const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
+    recordedAudios.push({blob,previewUrl:URL.createObjectURL(blob),type:blob.type,createdAt:new Date().toISOString(),name:'فويس نوت '+(recordedAudios.length+1)});
+    renderAudios();stream.getTracks().forEach(t=>t.stop());
+    $('trVoiceStatus').textContent='تمت إضافة الفويس نوت. يمكنك بدء تسجيل فويس آخر أو حفظ التقرير.';
+    $('trRecordBtn').innerHTML='<i class="fa-solid fa-microphone"></i> بدء تسجيل فويس آخر';
+   };
+   recorder.start();$('trRecordBtn').innerHTML='<i class="fa-solid fa-stop"></i> إيقاف التسجيل';$('trVoiceStatus').textContent='جاري تسجيل الفويس نوت...';
+  }catch(e){$('trVoiceStatus').textContent='لم يتم السماح باستخدام الميكروفون: '+e.message}
+ };
+ window.startArabicSpeechRecognition=function(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){$('trVoiceStatus').textContent='التعرف على الكلام غير مدعوم. جرّب Chrome أو Edge مع الإنترنت.';return}
+  if(speech){try{speech.stop()}catch(e){}}
+  speech=new SR();speech.lang='ar-EG';speech.continuous=true;speech.interimResults=true;
+  speech.onresult=e=>{let finalText='';for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)finalText+=e.results[i][0].transcript+' '}const box=$('trReportText');if(finalText.trim())box.value=(box.value.trim()?box.value.trim()+'\n':'')+finalText.trim();$('detailTechNotes').value=box.value};
+  speech.onerror=e=>$('trVoiceStatus').textContent='تعذر التعرف على الكلام: '+e.error;speech.onend=()=>{$('trVoiceStatus').textContent='انتهى تحويل الكلام إلى نص.'};speech.start();speechActive=true;$('trVoiceStatus').textContent='استمع الآن وتحدث بالعربية؛ سيضاف النص إلى التقرير.'
+ };
+ window.stopArabicSpeechRecognition=function(){if(speech){try{speech.stop()}catch(e){}}speechActive=false};
+ async function uploadBlob(blob,path){
+  if(!firebase.storage)throw new Error('Firebase Storage غير مفعّل');
+  const ref=firebase.storage().ref(path);const result=await ref.put(blob);return result.ref.getDownloadURL();
+ }
+ window.saveTechnicianReport=async function(){
+  const carId=currentSelectedCarId;if(!carId){alert('اختر سيارة أولاً');return}
+  const car=(allMechanicsCars||[]).find(c=>c.id===carId)||{};
+  const text=$('trReportText').value||'';$('detailTechNotes').value=text;
+  const payload={mechanicsTechNotes:text,mechanicsTechReportImages:[],mechanicsTechVoiceNotes:[],mechanicsTechReportUpdatedAt:new Date().toISOString(),mechanicsTechReportBy:loggedUser||''};
+  try{
+   for(let i=0;i<reportImages.length;i++){
+    const im=reportImages[i];let saved={name:im.name||('صورة '+(i+1)),addedAt:im.addedAt||new Date().toISOString()};
+    if(im.url)saved.url=im.url;
+    else if(im.dataUrl){
+     try{saved.url=await uploadBlob(dataUrlToBlob(im.dataUrl),'mechanics-tech-reports/'+carId+'/images/'+Date.now()+'_'+i+'.jpg');}
+     catch(e){saved.dataUrl=im.dataUrl;}
+    }
+    if(!saved.url&&im.dataUrl)saved.dataUrl=im.dataUrl;
+    payload.mechanicsTechReportImages.push(saved);
+   }
+   for(let i=0;i<recordedAudios.length;i++){
+    const a=recordedAudios[i];let saved={name:a.name||('فويس نوت '+(i+1)),type:a.type||a.blob?.type||'audio/webm',createdAt:a.createdAt||new Date().toISOString()};
+    if(a.url)saved.url=a.url;else if(a.dataUrl)saved.dataUrl=a.dataUrl;
+    else if(a.blob){
+     try{saved.url=await uploadBlob(a.blob,'mechanics-tech-reports/'+carId+'/audio/'+Date.now()+'_'+i+'.webm');}
+     catch(e){if(a.blob.size<700000)saved.dataUrl=await fileToDataURL(a.blob);else throw new Error('تعذر رفع فويس نوت رقم '+(i+1)+'؛ تحقق من صلاحيات Firebase Storage.')}
+    }
+    payload.mechanicsTechVoiceNotes.push(saved);
+   }
+   if(payload.mechanicsTechVoiceNotes.length){
+    const latest=payload.mechanicsTechVoiceNotes[payload.mechanicsTechVoiceNotes.length-1];
+    payload.mechanicsTechVoiceNoteUrl=latest.url||'';payload.mechanicsTechVoiceNoteDataUrl=latest.dataUrl||'';payload.mechanicsTechVoiceNoteType=latest.type||'audio/webm';
+   }
+   await db.collection('cars').doc(carId).set(payload,{merge:true});
+   if(car)Object.assign(car,payload);
+   if(typeof saveMechanicsWorkDataSilently==='function')await saveMechanicsWorkDataSilently();
+   alert('تم حفظ التقرير والصور وجميع الفويس نوت. رجعتك إلى شاشة المهندس.');
+   closeTechnicianReport();
+   if(typeof selectCar==='function')await selectCar(carId);
+  }catch(e){alert('تعذر حفظ التقرير: '+e.message)}
+ };
+ window.shareTechnicianReportWhatsApp=async function(){
+  const car=getCar();const report=$('trReportText').value||car.mechanicsTechNotes||'';
+  const imgs=reportImages;const audios=recordedAudios;
+  const lines=['تقرير فني من NON',`السيارة: ${car.brand||''} ${car.model||''}`,`رقم اللوحة: ${car.plate||'—'}`,`العميل: ${car.name||car.customerName||'—'}`,'','التقرير الفني:',report||'لا يوجد نص تقرير'];
+  const links=[];
+  imgs.forEach((im,i)=>{if(im.url)links.push(`صورة ${i+1}: ${im.url}`)});
+  audios.forEach((a,i)=>{if(a.url)links.push(`فويس نوت ${i+1}: ${a.url}`)});
+  let phone=String(car.customerPhone||car.clientPhone||car.phone||car.mobile||'').replace(/[^\d+]/g,'');
+  if(phone.startsWith('0'))phone='20'+phone.slice(1);if(phone.startsWith('+'))phone=phone.slice(1);
+  const textMessage=lines.join('\n')+(links.length?'\n\nمرفقات التقرير:\n'+links.join('\n'):'');
+  const files=[];
+  try{
+   for(let i=0;i<imgs.length;i++){const im=imgs[i];let blob=im.dataUrl?dataUrlToBlob(im.dataUrl):im.url?await (await fetch(im.url)).blob():null;if(blob)files.push(new File([blob],im.name||`report-photo-${i+1}.jpg`,{type:blob.type||'image/jpeg'}))}
+   for(let i=0;i<audios.length;i++){const a=audios[i];let blob=a.blob|| (a.dataUrl?dataUrlToBlob(a.dataUrl):a.url?await (await fetch(a.url)).blob():null);if(blob)files.push(new File([blob],`voice-note-${i+1}.webm`,{type:blob.type||'audio/webm'}))}
+  }catch(e){console.warn('Could not prepare share files',e)}
+  if(files.length&&navigator.canShare&&navigator.canShare({files})&&navigator.share){
+   try{await navigator.share({title:'تقرير الفني',text:textMessage,files});return}catch(e){if(e.name==='AbortError')return}
+  }
+  const waUrl='https://wa.me/'+(phone||'')+'?text='+encodeURIComponent(textMessage);
+  window.open(waUrl,'_blank');
+  alert('تم فتح واتساب بنص التقرير وروابط المرفقات. لإرسال الصور والفويس كملفات، استخدم قائمة المشاركة إذا ظهرت على جهازك.');
+ };
+})();
+</script>
+
 </body>
 </html>
