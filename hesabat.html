@@ -5181,27 +5181,30 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       const select = document.getElementById('advancePaymentCarSelect');
       const info = document.getElementById('advancePaymentCarInfo');
       const statusBox = document.getElementById('advancePaymentStatus');
-      select.innerHTML = '<option value="">جاري تحميل عملاء التشخيص...</option>';
+      select.innerHTML = '<option value="">جاري تحميل عملاء التشخيص والأقسام والاستقبال...</option>';
       info.style.display = 'none';
       try {
+        // جلب جميع السيارات النشطة حتى تظهر أسماء العملاء المسجلة في التشخيص
+        // والأقسام والاستقبال، وليس التشخيص فقط.
         const snap = await db.collection('cars').get();
         const excluded = new Set(['SENT_TO_TREASURY','PAID_AWAITING_DELIVERY','COMPLETED','ARCHIVED','DELIVERED']);
         diagnosisCarsForAdvance = [];
         snap.forEach(doc => {
           const c = {id:doc.id,...(doc.data()||{})};
           const state = String(c.status || '').toUpperCase();
-          const deptFields = [c.targetDepartment,c.currentDepartment,c.department,c.assignedDepartment].map(x=>String(x||'').toLowerCase());
-          const isDiagnosis = deptFields.includes('diagnosis') || state === 'IN_DIAGNOSIS';
-          if (isDiagnosis && !excluded.has(state) && !c.isPaid) diagnosisCarsForAdvance.push(c);
+          const name = String(c.clientName || c.name || c.customerName || '').trim();
+          // استبعاد السجلات المنتهية أو المدفوعة، مع إظهار أي عميل له سيارة
+          // نشطة في أي قسم بما في ذلك الاستقبال والتشخيص.
+          if (name && !excluded.has(state) && !c.isPaid) diagnosisCarsForAdvance.push(c);
         });
-        diagnosisCarsForAdvance.sort((a,b)=>String(a.clientName||a.name||'').localeCompare(String(b.clientName||b.name||''),'ar'));
+        diagnosisCarsForAdvance.sort((a,b)=>String(a.clientName||a.name||a.customerName||'').localeCompare(String(b.clientName||b.name||b.customerName||''),'ar'));
         filterAdvancePaymentClients();
         statusBox.textContent = diagnosisCarsForAdvance.length
-          ? `تم تحميل ${diagnosisCarsForAdvance.length} عميل/سيارة من التشخيص.`
-          : 'لا توجد سيارات ظاهرة في التشخيص حاليًا. تأكد أن السيارة مسجلة بقسم التشخيص في ملف diagnosis.';
+          ? `تم تحميل ${diagnosisCarsForAdvance.length} عميل/سيارة من التشخيص والأقسام والاستقبال.`
+          : 'لا توجد سيارات نشطة بها أسماء عملاء في التشخيص أو الأقسام أو الاستقبال.';
       } catch (e) {
         select.innerHTML = '<option value="">تعذر تحميل العملاء</option>';
-        statusBox.textContent = 'حدث خطأ أثناء تحميل عملاء التشخيص: ' + (e.message || e);
+        statusBox.textContent = 'حدث خطأ أثناء تحميل العملاء: ' + (e.message || e);
       }
     }
 
@@ -5210,18 +5213,19 @@ body.dark-mode #clientLifeStatementModal .non-service-window{background:#101f2e!
       const select = document.getElementById('advancePaymentCarSelect');
       const current = select.value;
       const rows = diagnosisCarsForAdvance.filter(c => {
-        const name = String(c.clientName || c.name || '').toLocaleLowerCase('ar');
+        const name = String(c.clientName || c.name || c.customerName || '').toLocaleLowerCase('ar');
         const phone = String(c.phone || c.clientPhone || c.mobile || '').replace(/\D/g,'');
         const normalizedQ = q.replace(/\D/g,'');
         return !q || name.includes(q) || (normalizedQ && phone.includes(normalizedQ));
       });
       select.innerHTML = '<option value="">اختر العميل...</option>';
       rows.forEach(c => {
-        const name = c.clientName || c.name || 'عميل بدون اسم';
+        const name = c.clientName || c.name || c.customerName || 'عميل بدون اسم';
         const phone = c.phone || c.clientPhone || c.mobile || '';
         const car = [c.brand,c.model].filter(Boolean).join(' ');
         const plate = c.plate || c.carPlate || '';
-        const label = `${name}${phone?' — '+phone:''}${car?' — '+car:''}${plate?' — '+plate:''}`;
+        const department = c.currentDepartment || c.targetDepartment || c.department || c.assignedDepartment || c.sectionName || c.departmentName || '';
+        const label = `${name}${phone?' — '+phone:''}${car?' — '+car:''}${plate?' — '+plate:''}${department?' — '+department:''}`;
         select.insertAdjacentHTML('beforeend', `<option value="${advancePaymentEsc(c.id)}">${advancePaymentEsc(label)}</option>`);
       });
       if (rows.some(c=>c.id===current)) select.value=current;
