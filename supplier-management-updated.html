@@ -43,6 +43,21 @@ body{margin:0;padding:16px;background:linear-gradient(180deg,#f3f7fc,#fff);color
   <button type="button" id="npAddInvoiceLine" class="secondary">إضافة إلى قائمة التوريد</button>
   <div class="np-note">أضف أكثر من صنف إلى القائمة، ثم احفظ الفاتورة مرة واحدة. سيتم تحديث كميات المخزن وحفظ أسعار كل صنف.</div><button type="button" id="npSaveInvoice">حفظ الفاتورة وإضافة الكميات للمخزن وطباعة إذن التوريد</button>
   <div class="np-tablewrap" style="margin-top:12px"><table><thead><tr><th>التاريخ</th><th>رقم الفاتورة</th><th>المورد</th><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>المتبقي</th><th>حذف</th></tr></thead><tbody id="npInvoiceRows"></tbody></table></div>
+ 
+  <div class="np-panel" id="npSupplierGoodsMovementPanel" style="background:#f8fafc">
+   <h3>مرتجع / مستخدم / مستبدل من بضاعة المورد</h3>
+   <div class="np-grid">
+    <div><label>المورد</label><select id="npGoodsSupplier"><option value="">اختر المورد</option></select></div><div><label>فاتورة المورد</label><select id="npGoodsOrder"><option value="">اختر المورد أولاً</option></select></div>
+    <div><label>الصنف</label><select id="npGoodsItem"><option value="">اختر الفاتورة أولاً</option></select></div>
+    <div><label>نوع الحركة</label><select id="npGoodsType"><option value="مرتجع بضاعة">مرتجع بضاعة للمورد (خصم)</option><option value="بضاعة مستخدمة">بضاعة مستخدمة</option><option value="بضاعة مستبدلة">بضاعة مستبدلة</option></select></div>
+    <div><label>الكمية</label><input id="npGoodsQty" type="number" min="0.001" step="0.001" value="1"></div>
+    <div><label>سعر الوحدة (ج.م)</label><input id="npGoodsPrice" type="number" min="0" step="0.01" value="0"></div>
+    <div><label>ملاحظات</label><input id="npGoodsNotes" placeholder="سبب المرتجع أو تفاصيل الحركة"></div>
+   </div>
+   <button type="button" id="npSaveGoodsMovement">حفظ الحركة وربطها بحساب المورد</button>
+   <div class="np-note">مرتجع البضاعة يُخصم من صافي فاتورة المورد ورصيده. الحركات المستخدمة والمستبدلة تُسجل للعرض في بوابة المورد دون خصم مالي.</div>
+   <div class="np-tablewrap"><table><thead><tr><th>التاريخ</th><th>المورد</th><th>الفاتورة</th><th>الصنف</th><th>الحركة</th><th>الكمية</th><th>القيمة</th><th>ملاحظات</th></tr></thead><tbody id="npGoodsMovementRows"></tbody></table></div>
+  </div>
  </div>
  <div id="npLotsPanel" class="np-panel" hidden><h3>دفعات المخزون وأسعار الموردين</h3><div class="np-tablewrap"><table><thead><tr><th>الصنف</th><th>المورد</th><th>رقم الفاتورة</th><th>الكمية الأصلية</th><th>المتبقي</th><th>سعر الوحدة</th><th>التاريخ</th></tr></thead><tbody id="npLotRows"></tbody></table></div></div>
  <div class="np-tabs" style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:12px">
@@ -91,7 +106,7 @@ try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);window.db=fi
  async function saveDoc(name,id,data){const d=db();if(!d)throw Error('Firebase غير متصل؛ لم يتم اعتماد الحفظ');await withTimeout(d.collection(name).doc(id).set(data,{merge:true}),name+' save');}
  const partyType=p=>{const explicit=String(p.type||p.kind||'').trim().toLowerCase();if(/^(supplier|vendor|مورد)$/.test(explicit))return 'supplier';if(/^(trader|merchant|تاجر)$/.test(explicit))return 'trader';const t=String(p.accountType||p.supplierType||'').trim().toLowerCase();if(/مورد/.test(t))return 'supplier';return /trader|merchant|تاجر/.test(t)?'trader':'supplier';};
  const accountTypeLabel=p=>partyType(p)==='trader'?'تاجر':'مورد';
- function balanceFor(p){const os=orders.filter(x=>String(x.supplierId)===String(p.id));const rs=returns.filter(x=>String(x.supplierId)===String(p.id));const ls=ledger.filter(x=>String(x.supplierId)===String(p.id));const total=os.reduce((a,x)=>a+Number(x.total||0),0),paid=Math.max(os.reduce((a,x)=>a+Number(x.paid||0),0),ls.filter(x=>/سداد|دفع|دفعة|payment/i.test(String(x.type||''))).reduce((a,x)=>a+Number(x.value||x.amount||0),0)),ret=rs.filter(x=>String(x.type||'').includes('مرتجع')).reduce((a,x)=>a+Number(x.value||0),0),dam=rs.filter(x=>String(x.type||'').includes('تالف')).reduce((a,x)=>a+Number(x.value||0),0);return Math.max(0,total-paid-ret-dam);}
+ function balanceFor(p){const os=orders.filter(x=>String(x.supplierId)===String(p.id));const rs=returns.filter(x=>String(x.supplierId)===String(p.id));const ls=ledger.filter(x=>String(x.supplierId)===String(p.id));const total=os.reduce((a,x)=>a+Number(x.grossTotal??x.total??0),0),paid=Math.max(os.reduce((a,x)=>a+Number(x.paid||0),0),ls.filter(x=>/سداد|دفع|دفعة|payment/i.test(String(x.type||''))).reduce((a,x)=>a+Number(x.value||x.amount||0),0)),ret=rs.filter(x=>String(x.type||'').includes('مرتجع')).reduce((a,x)=>a+Number(x.value||0),0),dam=rs.filter(x=>String(x.type||'').includes('تالف')).reduce((a,x)=>a+Number(x.value||0),0);return Math.max(0,total-paid-ret-dam);}
  function renderParties(){const rows=parties;$('npPartyHeading').textContent=editingId?'تعديل بيانات الحساب':'إضافة مورد / تاجر جديد';$('npPartyRows').innerHTML=rows.map(p=>{const archived=p.active===false||p.archived===true;return `<tr><td>${esc(p.name)}</td><td>${esc(p.phone||'')}</td><td>${balanceFor(p).toFixed(2)} ج.م</td><td>${archived?'<span style="color:#b91c1c;font-weight:800">مؤرشف</span>':'نشط'}</td><td><button type="button" class="secondary" data-np-edit="${esc(p.id)}">تعديل</button> ${archived?`<button type="button" data-np-restore="${esc(p.id)}">استعادة</button>`:`<button type="button" class="danger" data-np-delete="${esc(p.id)}">حذف</button>`} <button type="button" class="secondary" data-np-ledger="${esc(p.id)}">كشف الحساب</button> <button type="button" class="np-whatsapp-btn" data-np-whatsapp="${esc(p.id)}" style="background:#16a34a;color:#fff"> <i class="fa-brands fa-whatsapp"></i> واتساب</button></td></tr>`}).join('')||'<tr><td colspan="5">لا توجد حسابات مسجلة</td></tr>';}
  function renderInvoiceParties(){const select=$('npInvoiceParty');if(!select)return;const selected=String(select.value||'');const a=parties.filter(p=>p&&p.id&&p.name&&p.active!==false&&p.archived!==true&&partyType(p)==='supplier');select.innerHTML='<option value="">'+(a.length?'اختر المورد':'لا يوجد موردون نشطون — راجع دليل الموردين')+'</option>'+a.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');if(selected&&a.some(p=>String(p.id)===selected))select.value=selected;}
  function renderItems(){
@@ -133,7 +148,61 @@ try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);window.db=fi
    if(typeof refreshSupplierSelects==='function')refreshSupplierSelects();if(typeof renderSupplierRecords==='function')renderSupplierRecords();renderAll();status('متصل بـ Firebase — تم تحميل '+parties.filter(x=>x.active!==false&&x.archived!==true&&partyType(x)==='supplier').length+' مورد نشط من '+parties.length+' حساب.');
   }catch(e){console.error('Supplier module refresh failed',e);parties=localRead('suppliers_list');orders=localRead('supplier_issue_orders');returns=localRead('supplier_returns');ledger=localRead('supplier_ledger');inventory=localRead('inventory');renderAll();status('تعذر تحديث Firebase: '+(e.message||e)+' — لم يتم مسح البيانات المحلية.');}
  }
- function renderAll(){renderParties();renderInvoiceParties();renderItems();renderInvoices();renderLots();}
+   function goodsSupplierId(o){return String(o?.supplierId||o?.partyId||'');}
+  function goodsLines(o){return Array.isArray(o?.lines)?o.lines:Array.isArray(o?.items)?o.items:(o?.itemId||o?.productId?[{itemId:o.itemId||o.productId,name:o.itemName||o.name,qty:o.qty||o.quantity,price:o.unitCost||o.price,total:o.total}]:[]);}
+  function goodsValidOrders(){return orders.filter(o=>o&&goodsSupplierId(o)&&goodsLines(o).length&&o.portalOrder!==true&&String(o.requestType||'')!=='supplier_order');}
+  function renderGoodsMovementForm(){
+    const supplierSel=$('npGoodsSupplier'),sel=$('npGoodsOrder');if(!sel||!supplierSel)return;
+    const oldSupplier=supplierSel.value,oldOrder=sel.value;
+    const available=parties.filter(p=>p&&p.id&&partyType(p)==='supplier'&&(p.active!==false)&&p.archived!==true);
+    supplierSel.innerHTML='<option value="">'+(available.length?'اختر المورد':'لا يوجد موردون نشطون مسجلون')+'</option>'+available.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'مورد')}</option>`).join('');
+    if(oldSupplier&&available.some(p=>String(p.id)===oldSupplier))supplierSel.value=oldSupplier;
+    const supplierId=supplierSel.value;
+    const valid=goodsValidOrders().filter(o=>goodsSupplierId(o)===String(supplierId));
+    sel.innerHTML='<option value="">'+(supplierId?(valid.length?'اختر فاتورة توريد':'لا توجد فواتير لهذا المورد'):'اختر المورد أولاً')+'</option>'+valid.map(o=>`<option value="${esc(o.id)}">${esc(o.orderNo||o.invoiceNo||o.id)} — ${Number(o.total||0).toFixed(2)} ج.م</option>`).join('');
+    if(oldOrder&&valid.some(o=>String(o.id)===oldOrder))sel.value=oldOrder;
+    renderGoodsItems();
+    const rows=returns.slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')));
+    $('npGoodsMovementRows').innerHTML=rows.map(x=>`<tr><td>${esc(String(x.date||x.createdAt||'').slice(0,10))}</td><td>${esc(x.supplierName||parties.find(p=>String(p.id)===String(x.supplierId))?.name||'')}</td><td>${esc(x.orderNo||'—')}</td><td>${esc(x.itemName||x.item||'—')}</td><td>${esc(x.type||'حركة بضاعة')}</td><td>${Number(x.qty||x.quantity||0)}</td><td>${Number(x.value||0).toFixed(2)}</td><td>${esc(x.notes||'')}</td></tr>`).join('')||'<tr><td colspan="8">لا توجد حركات بضاعة مسجلة</td></tr>';
+  }
+  function renderGoodsItems(){
+    const order=orders.find(o=>String(o.id)===String($('npGoodsOrder')?.value||'')),el=$('npGoodsItem');if(!el)return;
+    const lines=goodsLines(order);
+    el.innerHTML='<option value="">اختر الصنف</option>'+lines.map((l,i)=>`<option value="${i}" data-itemid="${esc(l.itemId||l.productId||'')}" data-qty="${Number(l.qty||l.quantity||0)}" data-price="${Number(l.price||l.unitPrice||l.unitCost||0)}">${esc(l.name||l.itemName||'صنف')} — كمية ${Number(l.qty||l.quantity||0)}</option>`).join('');
+    $('npGoodsPrice').value=lines[0]?Number(lines[0].price||lines[0].unitPrice||lines[0].unitCost||0):0;
+  }
+  $('npGoodsSupplier')?.addEventListener('change',()=>{renderGoodsMovementForm();$('npGoodsOrder').value='';renderGoodsItems();});
+  $('npGoodsOrder')?.addEventListener('change',renderGoodsItems);
+  $('npGoodsItem')?.addEventListener('change',()=>{const o=orders.find(x=>String(x.id)===String($('npGoodsOrder').value)),l=(o?.lines||o?.items||[])[$('npGoodsItem').value];if(l)$('npGoodsPrice').value=Number(l.price||l.unitPrice||0);});
+  $('npSaveGoodsMovement')?.addEventListener('click',async()=>{
+    const order=orders.find(o=>String(o.id)===String($('npGoodsOrder').value)),idx=Number($('npGoodsItem').value),line=order?goodsLines(order)[idx]:null,type=$('npGoodsType').value,qty=Number($('npGoodsQty').value),price=Number($('npGoodsPrice').value),notes=$('npGoodsNotes').value.trim();
+    if(!order||!line||!(qty>0)||!Number.isFinite(qty)||!(price>=0)||!Number.isFinite(price)){alert('اختر فاتورة وصنفًا وأدخل كمية وسعرًا صحيحين.');return;}
+    const d=db();if(!d){alert('Firebase غير متصل. لم يتم حفظ الحركة.');return;}
+    const value=qty*price,now=new Date().toISOString(),isReturn=type==='مرتجع بضاعة';
+    const itemId=String(line.itemId||line.productId||'');
+    try{
+      const batch=d.batch(),retRef=d.collection(collections.returns).doc();
+      const update={...order,grossTotal:Number(order.grossTotal??order.total??0),returnedTotal:Number(order.returnedTotal||0)+(isReturn?value:0),total:isReturn?Math.max(0,Number(order.total||0)-value):Number(order.total||0),remaining:isReturn?Math.max(0,Number(order.total||0)-value-Number(order.paid||0)):Number(order.remaining??(Number(order.total||0)-Number(order.paid||0))),updatedAt:now};
+      batch.set(d.collection(collections.orders).doc(String(order.id)),update,{merge:true});
+      const rec={id:retRef.id,supplierId:goodsSupplierId(order),supplierName:order.supplierName||parties.find(p=>String(p.id)===goodsSupplierId(order))?.name||'',orderId:String(order.id),orderNo:order.orderNo||order.id,itemId,itemName:line.name||line.itemName||'',type,qty,quantity:qty,price,value:isReturn?value:0,recordValue:value,notes,date:now,createdAt:now,source:'supplier_goods_movement'};
+      batch.set(retRef,rec);
+      if(isReturn){
+        const led=d.collection(collections.ledger).doc();
+        batch.set(led,{id:led.id,supplierId:goodsSupplierId(order),supplierName:order.supplierName||parties.find(p=>String(p.id)===goodsSupplierId(order))?.name||'',orderNo:order.orderNo||order.id,type:'مرتجع بضاعة',value:value,amount:value,date:now,notes:'خصم مرتجع '+(line.name||line.itemName||'')});
+        if(itemId){
+          const itemRef=d.collection(collections.inventory).doc(itemId),snap=await itemRef.get();
+          if(snap.exists){const current=snap.data()||{},stock=Number(current.qty??current.quantity??0);if(stock<qty){alert('كمية المرتجع أكبر من رصيد الصنف بالمخزن ('+stock+').');return;}batch.update(itemRef,{qty:stock-qty,updatedAt:now});}
+          const lotSnap=await d.collection(collections.legacyLots).where('orderId','==',String(order.id)).where('itemId','==',itemId).get();
+          lotSnap.docs.forEach(doc=>{const lot=doc.data()||{};batch.update(doc.ref,{remainingQty:Math.max(0,Number(lot.remainingQty||0)-qty),updatedAt:now});});
+        }
+      }
+      await withTimeout(batch.commit(),'حفظ حركة بضاعة المورد');
+      alert(isReturn?'تم تسجيل المرتجع وخصمه من إجمالي الفاتورة وحساب المورد.':'تم تسجيل حركة البضاعة وربطها بحساب المورد.');
+      $('npGoodsQty').value='1';$('npGoodsNotes').value='';await refresh();
+      if(typeof loadInventoryData==='function')try{await loadInventoryData()}catch(_){}
+    }catch(err){console.error(err);alert('تعذر حفظ حركة البضاعة: '+(err.message||err));}
+  });
+function renderAll(){renderParties();renderInvoiceParties();renderItems();renderInvoices();renderLots();renderGoodsMovementForm();}
  document.querySelectorAll('#nonPartySystem [data-np-tab]').forEach(b=>b.addEventListener('click',()=>{const tab=b.dataset.npTab;if(tab==='suppliers'){$('npPartyType').value='supplier';}$('npPartiesPanel').hidden=tab==='invoices'||tab==='lots';$('npInvoicesPanel').hidden=tab!=='invoices';$('npLotsPanel').hidden=tab!=='lots';document.querySelectorAll('#nonPartySystem [data-np-tab]').forEach(x=>x.classList.toggle('secondary',x!==b));if(tab!=='invoices'&&tab!=='lots')renderParties();}));
  function normalizeSupplierWhatsApp(raw){
   let n=String(raw||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'');
